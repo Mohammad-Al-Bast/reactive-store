@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Reactive Store brand tokens (shadcn/ui variable names, so `npx shadcn add`
+ * components pick up the brand automatically).
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #fbfaf7;
+  --foreground: #15171b;
+  --card: #ffffff;
+  --card-foreground: #15171b;
+  --popover: #ffffff;
+  --popover-foreground: #15171b;
+  --primary: #15171b;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f1ea;
+  --secondary-foreground: #15171b;
+  --muted: #f4f1ea;
+  --muted-foreground: #5f646c;
+  --accent: #f4f1ea;
+  --accent-foreground: #15171b;
+  --destructive: #b42318;
+  --border: #e6e2d9;
+  --input: #d9d4c8;
+  --ring: #8a6420;
+
+  /* Brand extras */
+  --brand: #8a6420; /* gold text that passes contrast on light grounds */
+  --gold: #d2ae63; /* gold fills and gold text on ink */
+  --gold-foreground: #15171b;
+  --gold-soft: #fbf6ec;
+  --ink: #15171b;
+  --ink-raised: #1f2227;
+  --ink-line: #33373e;
+  --ink-text: #cfc9bc;
+  --success: #2f6b45;
+  --warning: #8a4b12;
+  --warning-soft: #fff7e8;
+  --text-body: #3b3f46;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-gold-soft: var(--gold-soft);
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-ink-line: var(--ink-line);
+  --color-ink-text: var(--ink-text);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-body: var(--text-body);
+
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@utility container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1240px;
+  padding-inline: 1.5rem;
+  @media (width < 640px) {
+    padding-inline: 1rem;
+  }
+}
+
+@utility eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility display {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.015em;
+}
