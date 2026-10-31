@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ExternalLink, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 import { EnquiryForm } from "@/components/enquiry-form";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { site, telHref, whatsappHref } from "@/lib/site";
 
@@ -11,15 +12,21 @@ export const metadata: Metadata = {
 };
 
 const faq = [
-  { q: "Where do you deliver, and how long does it take?", a: `${site.delivery}. ${site.deliveryTime}.` },
-  { q: "How can I pay?", a: site.paymentMethods.map((m) => `${m.name}: ${m.description}`).join(" · ") },
-  { q: "Do devices come with a warranty?", a: `Yes: ${site.warranty}.` },
+  {
+    q: "Where do you deliver, and how long does it take?",
+    a: "We deliver across Lebanon. Delivery time depends on your location, generally 3–5 days.",
+  },
+  { q: "How can I pay?", a: "Cash on delivery, or by Whish / OMT transfer before dispatch." },
+  {
+    q: "Do devices come with a warranty?",
+    a: `Warranty availability, duration and coverage vary by product. Please contact ${site.name} before purchasing to confirm whether your item includes a warranty and to learn its terms and conditions.`,
+  },
   {
     q: "Can I return a product?",
-    a: "[Return policy — confirm. Opened hygiene items such as needles and electrodes are usually non-returnable.]",
+    a: "Returns may be accepted for incorrect or faulty items after review. For hygiene reasons, opened or used single-use and personal-care products cannot be returned unless faulty or supplied incorrectly.",
   },
   { q: "Do you offer prices for clinics or bulk orders?", a: "Yes. Send us your list and we prepare one combined quote." },
-  { q: "Do you offer anything for students?", a: "[Student or group-order offer — confirm, or remove this question.]" },
+  { q: "Do you offer anything for students?", a: "Yes, we have offers for students and for group orders. Ask us for details." },
 ];
 
 export default function ContactPage() {
@@ -27,7 +34,7 @@ export default function ContactPage() {
     { icon: MessageCircle, title: "WhatsApp", text: `${site.phoneDisplay} · fastest reply`, href: whatsappHref(), dark: true },
     { icon: Phone, title: "Call us", text: site.phoneDisplay, href: telHref },
     { icon: Mail, title: "Email", text: site.email, href: site.email.includes("@") ? `mailto:${site.email}` : undefined },
-    { icon: MapPin, title: "Visit", text: site.address },
+    { icon: MapPin, title: "Visit", text: site.address, href: site.mapUrl },
   ];
 
   return (
@@ -44,7 +51,7 @@ export default function ContactPage() {
               <>
                 <Icon aria-hidden="true" className={`size-7 ${dark ? "text-gold" : "text-brand"}`} strokeWidth={1.7} />
                 <span className="text-[17px] font-bold">{title}</span>
-                <span className={dark ? "text-ink-text" : "text-muted-foreground"}>{text}</span>
+                <span className={`[overflow-wrap:anywhere] ${dark ? "text-ink-text" : "text-muted-foreground"}`}>{text}</span>
               </>
             );
             const cls = `flex h-full flex-col gap-2.5 rounded-2xl p-6 ${dark ? "bg-ink text-white hover:bg-ink-raised" : "border border-border bg-card hover:border-[#cdbf9f]"}`;
@@ -66,9 +73,17 @@ export default function ContactPage() {
       <section className="container-page grid gap-8 pt-6 pb-18 lg:grid-cols-[1.4fr_1fr]">
         <EnquiryForm withTopic title="Send us a message" messagePlaceholder="How can we help?" />
         <div className="flex flex-col gap-4">
-          {/* Replace with a Google Maps embed of your location once the address is confirmed. */}
-          <div className="flex min-h-70 flex-1 items-center justify-center rounded-2xl border-[1.5px] border-dashed border-[#cdbf9f] bg-muted p-6 text-center text-sm text-muted-foreground">
-            Map: your store location
+          <div className="flex flex-1 flex-col justify-between gap-6 rounded-2xl bg-ink p-7 text-white">
+            <div className="flex flex-col gap-3">
+              <MapPin aria-hidden="true" className="size-8 text-gold" strokeWidth={1.6} />
+              <h2 className="font-serif text-[26px] font-medium leading-tight">Visit our store</h2>
+              <p className="text-ink-text">{site.address}</p>
+            </div>
+            <Button asChild variant="accent" size="lg" className="w-fit">
+              <a href={site.mapUrl} target="_blank" rel="noreferrer">
+                Open in Google Maps <ExternalLink />
+              </a>
+            </Button>
           </div>
           <div className="rounded-2xl border border-border bg-card p-6">
             <h2 className="mb-3 text-[17px] font-bold">Opening hours</h2>

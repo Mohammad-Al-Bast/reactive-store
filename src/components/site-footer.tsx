@@ -44,7 +44,14 @@ export function SiteFooter() {
 
         <div className="flex flex-col gap-2.5">
           <h2 className="mb-1 font-semibold text-white">Visit or call</h2>
-          {site.address ? <span>{site.address}</span> : null}
+          {site.address ? (
+            <a href={site.mapUrl} target="_blank" rel="noreferrer" className="hover:text-gold">
+              {site.address}
+            </a>
+          ) : null}
+          <a href={`mailto:${site.email}`} className="break-all hover:text-gold">
+            {site.email}
+          </a>
           {site.hours.map((h) => (
             <span key={h.days}>
               {h.days}: {h.time}

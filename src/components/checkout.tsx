@@ -66,7 +66,7 @@ export function Checkout() {
         <h1 className="display text-[44px] leading-[1.1]">Thank you, almost done.</h1>
         <p className="text-[17px] text-body">
           Your order <strong>{placed.id}</strong> opened in WhatsApp. <strong>Press send there</strong> so it reaches us,
-          and we will confirm the total and delivery time within {site.replyTime}.
+          and we will confirm the total, delivery time and fees within one working day.
         </p>
         <div className="mt-2 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
@@ -210,7 +210,7 @@ export function Checkout() {
             <h2 id="h-pay" className="mb-4 text-lg font-bold">
               3. Payment
             </h2>
-            <RadioGroup aria-labelledby="h-pay" value={payment} onValueChange={setPayment} className="sm:grid-cols-3">
+            <RadioGroup aria-labelledby="h-pay" value={payment} onValueChange={setPayment} className="sm:grid-cols-2">
               {site.paymentMethods.map((m) => (
                 <RadioCard key={m.id} value={m.id}>
                   <span className="text-[15px] font-bold">{m.name}</span>
@@ -235,6 +235,7 @@ export function Checkout() {
             <span>Total</span>
             <span>{cart.subtotal > 0 && !cart.hasUnpriced ? formatPrice(cart.subtotal) : "We confirm by phone"}</span>
           </div>
+          <p className="-mt-2 text-[13px] text-muted-foreground">Plus delivery, confirmed with you on WhatsApp.</p>
           {cart.hasUnpriced ? (
             <p className="text-[13px] text-muted-foreground">Some items are priced on request; we confirm the total before delivery.</p>
           ) : null}
@@ -244,7 +245,7 @@ export function Checkout() {
           <p className="text-center text-[13px] text-muted-foreground">You pay nothing until we confirm your order by phone.</p>
           <div className="flex flex-col gap-2.5 border-t border-[#efebe2] pt-3.5 text-sm">
             <span className="flex items-center gap-2.5">
-              <ShieldCheck aria-hidden="true" className="size-4.5 text-brand" /> Warranty on devices: {site.warranty}
+              <ShieldCheck aria-hidden="true" className="size-4.5 text-brand" /> Warranty terms confirmed per item
             </span>
             <a href={telHref} className="flex items-center gap-2.5 hover:text-brand">
               <Phone aria-hidden="true" className="size-4.5 text-brand" /> Questions? {site.phoneDisplay}

@@ -25,7 +25,7 @@ const standards = [
   { icon: Globe, title: "Reliable manufacturers", text: "Sourced from trusted international suppliers" },
   { icon: ShieldCheck, title: "Safety & quality first", text: "High standards for every product we stock" },
   { icon: Tags, title: "Reasonable prices", text: "Fair pricing, clear before you order" },
-  { icon: RefreshCw, title: "Support after purchase", text: `Warranty: ${site.warranty}` },
+  { icon: RefreshCw, title: "Support after purchase", text: "Warranty terms confirmed per item" },
 ];
 
 const audiences = [
@@ -46,7 +46,7 @@ const audiences = [
     text: "Physiotherapy and therapy students who need reliable tools for training.",
     points: [
       "The right equipment for your coursework",
-      "Reasonable prices for students [student offer?]",
+      "Reasonable prices for students",
       "Group orders for a class or cohort",
     ],
     cta: "Ask about student orders",
@@ -63,7 +63,7 @@ const audiences = [
 const steps = [
   { title: "Browse or ask", text: "Shop online, or message us on WhatsApp with what you need." },
   { title: "Confirm your order", text: "We confirm price, availability and delivery before anything is charged." },
-  { title: "Delivery", text: `Delivered to your clinic or home. ${site.deliveryTime}.` },
+  { title: "Delivery", text: "Delivered to your clinic or home." },
   { title: "Support after purchase", text: "Questions on use, warranty or restocks go to the same team." },
 ];
 
@@ -88,8 +88,8 @@ export default function HomePage() {
               Quality equipment. Safer care. Better lives.
             </h1>
             <p className="mb-8 max-w-xl text-lg text-body">
-              Rehabilitation, physiotherapy and therapy equipment for practitioners, students and families across
-              Lebanon, from a team that has worked in the field for {site.yearsInField} years.
+              Medical, beauty, rehabilitation, physiotherapy and therapy equipment for practitioners, students and
+              families across Lebanon, from a team that has worked in the field for {site.yearsInField} years.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">

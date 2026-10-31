@@ -35,7 +35,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
   const reassurance = [
     { icon: ShieldCheck, title: "Warranty", text: site.warranty },
     { icon: Truck, title: "Delivery", text: site.deliveryTime },
-    { icon: CreditCard, title: "Payment", text: site.paymentMethods.map((m) => m.name).join(", ") },
+    { icon: CreditCard, title: "Payment", text: "Cash on delivery or Whish / OMT" },
     { icon: Headphones, title: "Help using it", text: "We show you how, by call or WhatsApp" },
   ];
 

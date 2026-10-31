@@ -14,20 +14,22 @@ export const site = {
   phoneDisplay: "81 164 065",
   /** International format, digits only — used for tel: and WhatsApp links. */
   phoneIntl: "96181164065",
-  email: "[email address]",
-  address: "[Address, city]",
+  email: "reactive.medicalservices.lb@gmail.com",
+  address: "Shtoura, Sultan Center, Third Floor",
+  mapUrl: "https://maps.app.goo.gl/Rcuwrb2Fpk81uRn88",
   hours: [
-    { days: "Mon – Fri", time: "[9:00 – 18:00]" },
-    { days: "Saturday", time: "[9:00 – 14:00]" },
-    { days: "Sunday", time: "[Closed]" },
+    { days: "Mon – Fri", time: "8:00 – 18:00" },
+    { days: "Saturday", time: "8:00 – 14:00" },
+    { days: "Sunday", time: "Closed" },
   ],
-  replyTime: "[one working day]",
+  replyTime: "one working day (24h)",
 
-  delivery: "Delivery across Lebanon [confirm]",
-  deliveryTime: "[1–3] days, all Lebanon [confirm]",
-  deliveryFee: "[FEE]",
-  warranty: "[X] months [confirm]",
-  customersServed: "[X]+",
+  delivery: "Delivery across Lebanon",
+  deliveryTime: "3–5 days, all Lebanon",
+  deliveryFee: "Confirmed on WhatsApp",
+  /** Warranty differs per product, so it is confirmed per item rather than promised site-wide. */
+  warranty: "Confirmed per item",
+  customersServed: "2,500+",
 
   social: {
     instagram: "", // e.g. "https://instagram.com/reactivestore"
@@ -35,9 +37,8 @@ export const site = {
   },
 
   paymentMethods: [
-    { id: "cod", name: "Cash on delivery", description: "Pay when it arrives [confirm]" },
-    { id: "wallet", name: "[Whish / OMT]", description: "Transfer before dispatch [confirm]" },
-    { id: "bank", name: "Bank transfer", description: "For clinics and bulk orders [confirm]" },
+    { id: "cod", name: "Cash on delivery", description: "Pay when it arrives" },
+    { id: "wallet", name: "Whish / OMT", description: "Transfer before dispatch" },
   ],
 
   governorates: [
