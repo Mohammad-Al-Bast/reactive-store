@@ -68,3 +68,7 @@ New components pick up the brand colours from `globals.css` automatically.
 
 Push to GitHub and import the repo on Vercel (free tier is enough), or run `npm run build`
 and host the output on any Node.js server.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull request workflow.
