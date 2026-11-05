@@ -112,6 +112,15 @@ describe('Admin auth (e2e)', () => {
     await request(server).get('/api/auth/me').set('Cookie', header(jar, 'rs_admin')).expect(200);
   });
 
+  it('never rate-limits /auth/me, which the admin site calls on every page load', async () => {
+    const server = app.getHttpServer();
+    const jar = cookies(await login());
+    // Well past the default limit for public submissions (5 per 10 minutes).
+    for (let i = 0; i < 25; i++) {
+      await request(server).get('/api/auth/me').set('Cookie', header(jar, 'rs_admin')).expect(200);
+    }
+  });
+
   it('refuses an expired access token', async () => {
     const jar = cookies(await login());
     const sid = (await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash: hashToken(jar['rs_admin_refresh']!.value) } })).familyId;

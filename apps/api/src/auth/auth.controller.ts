@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { loginSchema, type AdminProfile } from '@reactive-store/shared';
 import type { CookieOptions, Request, Response } from 'express';
 import { z } from 'zod';
@@ -20,6 +20,12 @@ const FIFTEEN_MINUTES = 15 * 60_000;
 /** Sign-in attempts per IP every 15 minutes (LOGIN_RATE_LIMIT, default 10). */
 const loginLimit = () => Number(process.env.LOGIN_RATE_LIMIT || 10);
 
+/**
+ * Sign-in and token refresh are rate-limited per IP. Everything else here is
+ * exempt: the admin site calls /auth/me from its own server on every page load,
+ * so under the default limit (meant for public form submissions) the panel
+ * stopped working after a few page views.
+ */
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
@@ -66,6 +72,7 @@ export class AuthController {
   /** Signs out this browser. Always succeeds. */
   @Post('logout')
   @HttpCode(204)
+  @SkipThrottle()
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(req.cookies?.[REFRESH_COOKIE]);
     this.clearCookies(res);
@@ -74,6 +81,7 @@ export class AuthController {
   /** Signs this admin out on every device, including this one. */
   @Post('logout-all')
   @HttpCode(204)
+  @SkipThrottle()
   @RequireAdmin()
   async logoutAll(@CurrentAdmin() admin: AuthenticatedAdmin, @Res({ passthrough: true }) res: Response) {
     await this.auth.revokeAll(admin.id);
@@ -82,6 +90,7 @@ export class AuthController {
 
   @Get('me')
   @RequireAdmin()
+  @SkipThrottle()
   me(@CurrentAdmin() admin: AuthenticatedAdmin): Promise<AdminProfile> {
     return this.auth.profile(admin.id);
   }
