@@ -51,6 +51,20 @@ enum PaymentMethod {
   wallet
 }
 
+enum NotificationChannel {
+  telegram
+  email
+}
+
+enum NotificationStatus {
+  pending
+  /// Claimed by the sender; reset to pending if it stays here too long (e.g. a crash).
+  sending
+  sent
+  /// Gave up: a permanent error, or too many attempts.
+  failed
+}
+
 enum PaymentStatus {
   unpaid
   paid
@@ -172,6 +186,7 @@ model Order {
   updatedAt      DateTime             @updatedAt
   items          OrderItem[]
   statusHistory  OrderStatusHistory[]
+  notifications  Notification[]
 
   @@index([status, createdAt])
   @@index([createdAt])
@@ -209,18 +224,48 @@ model OrderStatusHistory {
 }
 
 model Enquiry {
-  id        String    @id @default(uuid(7)) @db.Uuid
-  name      String
-  phone     String
-  role      String
-  topic     String?
-  message   String
-  locale    Locale    @default(en)
+  id            String         @id @default(uuid(7)) @db.Uuid
+  name          String
+  phone         String
+  role          String
+  topic         String?
+  message       String
+  locale        Locale         @default(en)
   /// Set when an admin marks it handled.
-  handledAt DateTime?
-  createdAt DateTime  @default(now())
+  handledAt     DateTime?
+  createdAt     DateTime       @default(now())
+  notifications Notification[]
 
   @@index([handledAt, createdAt])
+}
+
+// ─── Store alerts ───────────────────────────────────────────────────────────
+
+/// Outbox of alerts to staff (Telegram, email). Rows are written in the same
+/// transaction as the order or enquiry, then delivered by a background sender
+/// with retries, so an alert is never lost and never blocks a customer.
+model Notification {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  channel       NotificationChannel
+  /// Telegram chat id, or email address.
+  target        String
+  subject       String?
+  text          String
+  status        NotificationStatus  @default(pending)
+  attempts      Int                 @default(0)
+  nextAttemptAt DateTime            @default(now())
+  lastError     String?
+  sentAt        DateTime?
+  orderId       String?             @db.Uuid
+  enquiryId     String?             @db.Uuid
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  order         Order?              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  enquiry       Enquiry?            @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([orderId])
+  @@index([enquiryId])
 }
 
 // ─── Admin auth ─────────────────────────────────────────────────────────────

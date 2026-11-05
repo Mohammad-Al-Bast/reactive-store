@@ -7,7 +7,7 @@ import { AppService } from './app.service.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { OriginGuard } from './common/origin.guard.js';
 import { EnquiriesModule } from './enquiries/enquiries.module.js';
-import { MailModule } from './mail/mail.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -23,7 +23,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
       ],
     }),
     PrismaModule,
-    MailModule,
+    NotificationsModule,
     CatalogModule,
     OrdersModule,
     EnquiriesModule,

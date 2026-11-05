@@ -11,8 +11,9 @@ A monorepo with npm workspaces. The backend is being built in phases; see
 | `apps/api` | REST API under `/api`. NestJS 12 · Prisma 7 · PostgreSQL 17 |
 | `packages/shared` | Zod schemas, enums and types used by both apps |
 
-Orders and enquiries are saved in the database and emailed to the store. Customers can also
-send them on WhatsApp from the confirmation screen, but they don't have to.
+Orders and enquiries are saved in the database, and staff get an alert on Telegram (and by
+email, if configured). Customers can also send their order on WhatsApp from the confirmation
+screen, but they don't have to.
 
 ## Run it
 
@@ -53,7 +54,8 @@ npm run build                              # needs the API on :3001
 | Brand colours and fonts | `apps/web/src/app/globals.css` |
 | Order and enquiry message format (WhatsApp and email alerts) | `packages/shared/src/messages.ts` |
 | Enquiry form roles and topics | ids in `packages/shared/src/forms.ts`, labels in `apps/web/src/lib/whatsapp.ts` |
-| Order alert email, rate limits | `SMTP_*`, `ORDER_ALERT_TO` and `SUBMIT_RATE_LIMIT` in `apps/api/.env` |
+| Staff alerts (Telegram, email), rate limits | `TELEGRAM_*`, `SMTP_*`, `ORDER_ALERT_TO` and `SUBMIT_RATE_LIMIT` in `apps/api/.env` (see below) |
+| Alert wording | `apps/api/src/notifications/alerts.ts` |
 | Database schema | `apps/api/prisma/schema.prisma` |
 
 Anything still in `[brackets]` is a fact only the store can confirm (prices, warranty,
@@ -82,6 +84,23 @@ without one, such as `/shop`, redirect to `/en/shop`.
 API routes (all under `/api`): `GET /health`, `GET /categories`, `GET /products?category=&locale=`,
 `GET /products/:slug?locale=`, `POST /cart/resolve`, `POST /orders`, `POST /enquiries`.
 The two form endpoints are rate limited per IP and refuse POSTs from other websites.
+
+## New-order alerts on Telegram
+
+Every new order and enquiry sends a message to staff on Telegram. To set it up:
+
+1. In Telegram, message **@BotFather**, send `/newbot`, and follow the steps. Copy the token
+   it gives you into `TELEGRAM_BOT_TOKEN` in `apps/api/.env`.
+2. Open your new bot and send it any message. For a shared alert chat, add the bot to a staff
+   group and send a message there.
+3. Run `npm run telegram:setup -w @reactive-store/api` to list the chat ids that messaged the bot.
+4. Put the ids into `TELEGRAM_CHAT_IDS` (comma-separated), then send a test with
+   `npm run telegram:setup -w @reactive-store/api -- <id>`.
+5. Restart the API. Its log should say `telegram alerts on, to N recipient(s)`.
+
+Alerts are saved with the order in the same database transaction, then sent in the
+background. If Telegram is down, they retry for about 2 hours; a wrong token or chat id
+fails at once and is logged. Each alert's status is in the `Notification` table.
 
 ## Adding more shadcn/ui components
 

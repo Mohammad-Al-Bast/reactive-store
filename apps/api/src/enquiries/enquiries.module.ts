@@ -2,7 +2,7 @@ import { Body, Controller, Injectable, Logger, Module, Post, UseGuards } from '@
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { createEnquirySchema, HONEYPOT_FIELD, type CreateEnquiry } from '@reactive-store/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
-import { MailService } from '../mail/mail.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
@@ -11,7 +11,7 @@ export class EnquiriesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(input: CreateEnquiry): Promise<{ received: true }> {
@@ -20,17 +20,21 @@ export class EnquiriesService {
       this.logger.warn('Dropped an enquiry with the honeypot field filled.');
       return { received: true };
     }
-    await this.prisma.enquiry.create({
-      data: {
-        name: input.name,
-        phone: input.phone,
-        role: input.role,
-        topic: input.topic ?? null,
-        message: input.message,
-        locale: input.locale,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const enquiry = await tx.enquiry.create({
+        data: {
+          name: input.name,
+          phone: input.phone,
+          role: input.role,
+          topic: input.topic ?? null,
+          message: input.message,
+          locale: input.locale,
+        },
+        select: { id: true },
+      });
+      await this.notifications.queueEnquiry(tx, enquiry.id, input);
     });
-    void this.mail.notifyEnquiry(input);
+    this.notifications.kick();
     return { received: true };
   }
 }

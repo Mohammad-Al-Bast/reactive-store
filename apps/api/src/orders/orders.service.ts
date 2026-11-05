@@ -7,7 +7,7 @@ import {
 } from '@reactive-store/shared';
 import { pickTranslation } from '../catalog/catalog.mapper.js';
 import { Prisma } from '../generated/prisma/client.js';
-import { MailService } from '../mail/mail.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { makeOrderNumber } from './order-number.js';
 import { mergeItems, priceOrder, type PricedProduct } from './pricing.js';
@@ -20,7 +20,7 @@ export class OrdersService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(input: CreateOrder): Promise<OrderSummary> {
@@ -66,19 +66,25 @@ export class OrdersService {
       return summary(makeOrderNumber(), new Date());
     }
 
-    const order = await this.insertWithUniqueNumber(input, priced);
-    const result = summary(order.number, order.createdAt);
-    // After the commit, and not awaited: a failed email must not fail the order.
-    void this.mail.notifyOrder(result);
+    const result = await this.insertWithUniqueNumber(input, priced, summary);
+    // Alerts were queued in the transaction; send them now rather than at the next poll.
+    this.notifications.kick();
     return result;
   }
 
-  /** Saves the order, its lines and its first status-history row in one transaction. */
-  private async insertWithUniqueNumber(input: CreateOrder, priced: ReturnType<typeof priceOrder>) {
+  /**
+   * Saves the order, its lines, its first status-history row and its staff alerts
+   * in one transaction.
+   */
+  private async insertWithUniqueNumber(
+    input: CreateOrder,
+    priced: ReturnType<typeof priceOrder>,
+    summary: (number: string, createdAt: Date) => OrderSummary,
+  ) {
     for (let attempt = 1; ; attempt++) {
       try {
-        return await this.prisma.$transaction(async (tx) =>
-          tx.order.create({
+        return await this.prisma.$transaction(async (tx) => {
+          const order = await tx.order.create({
             data: {
               number: makeOrderNumber(),
               paymentMethod: input.paymentMethod,
@@ -102,9 +108,12 @@ export class OrdersService {
               },
               statusHistory: { create: { status: 'new', note: 'Order placed on the website' } },
             },
-            select: { number: true, createdAt: true },
-          }),
-        );
+            select: { id: true, number: true, createdAt: true },
+          });
+          const result = summary(order.number, order.createdAt);
+          await this.notifications.queueOrder(tx, order.id, result);
+          return result;
+        });
       } catch (err) {
         const duplicateNumber =
           err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';

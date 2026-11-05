@@ -3,12 +3,14 @@
  * Rows created here are deleted afterwards.
  */
 import 'dotenv/config';
-import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { orderNumberPattern } from '@reactive-store/shared';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
-import { MailService } from '../src/mail/mail.service.js';
+import { PermanentSendError } from '../src/notifications/channel.js';
+import { EmailChannel } from '../src/notifications/email.channel.js';
+import { NotificationsService } from '../src/notifications/notifications.service.js';
+import { TelegramChannel } from '../src/notifications/telegram.channel.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 const customer = {
@@ -19,18 +21,23 @@ const customer = {
   address: 'Test building',
 };
 
+/**
+ * The app with a fake Telegram bot (two staff chats) and email switched off.
+ * The background sender is off, so tests deliver alerts by calling processDue().
+ */
 async function createApp(env: Record<string, string> = {}) {
-  Object.assign(process.env, env);
-  const notifyOrder = vi.fn().mockResolvedValue(true);
-  const notifyEnquiry = vi.fn().mockResolvedValue(true);
+  Object.assign(process.env, { NOTIFICATIONS_WORKER: 'off', ...env });
+  const telegramSend = vi.fn().mockResolvedValue(undefined);
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(MailService)
-    .useValue({ notifyOrder, notifyEnquiry })
+    .overrideProvider(TelegramChannel)
+    .useValue({ enabled: true, targets: ['1001', '1002'], send: telegramSend })
+    .overrideProvider(EmailChannel)
+    .useValue({ enabled: false, targets: [], send: vi.fn() })
     .compile();
   const app = moduleRef.createNestApplication();
   app.setGlobalPrefix('api');
   await app.init();
-  return { app, prisma: app.get(PrismaService), notifyOrder, notifyEnquiry };
+  return { app, prisma: app.get(PrismaService), notifications: app.get(NotificationsService), telegramSend };
 }
 
 async function cleanUp(prisma: PrismaService) {
@@ -50,7 +57,7 @@ describe('Orders (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('saves an order with server prices and its first status, then alerts the store', async () => {
+  it('saves an order with server prices, its first status and its staff alerts', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post('/api/orders')
       .send({
@@ -76,13 +83,53 @@ describe('Orders (e2e)', () => {
 
     const saved = await ctx.prisma.order.findUniqueOrThrow({
       where: { number: res.body.number },
-      include: { items: true, statusHistory: true },
+      include: { items: true, statusHistory: true, notifications: true },
     });
     expect(saved.subtotal.toNumber()).toBe(210);
     expect(saved.items).toHaveLength(2);
     expect(saved.items.find((i) => i.productSlug === '4-in-1-tens-ems-unit')?.unitPrice?.toNumber()).toBe(70);
     expect(saved.statusHistory.map((h) => h.status)).toEqual(['new']);
-    expect(ctx.notifyOrder).toHaveBeenCalledWith(expect.objectContaining({ number: res.body.number }));
+
+    // One alert per staff chat, saved with the order and waiting to be sent.
+    expect(saved.notifications.map((n) => [n.channel, n.target, n.status]).sort()).toEqual([
+      ['telegram', '1001', 'pending'],
+      ['telegram', '1002', 'pending'],
+    ]);
+    expect(saved.notifications[0]!.text).toContain(`New order ${res.body.number}`);
+    expect(saved.notifications[0]!.text).toContain('$210.00 + items on request');
+
+    await ctx.notifications.processDue();
+    expect(ctx.telegramSend).toHaveBeenCalledTimes(2);
+    expect(ctx.telegramSend).toHaveBeenCalledWith('1001', expect.objectContaining({ text: expect.stringContaining(res.body.number) }));
+    const after = await ctx.prisma.notification.findMany({ where: { orderId: saved.id } });
+    expect(after.every((n) => n.status === 'sent' && n.sentAt)).toBe(true);
+  });
+
+  it('retries an alert that failed, and stops on a permanent error', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/orders')
+      .send({ items: [{ slug: 'loop-bands', qty: 1 }], customer, paymentMethod: 'cod' })
+      .expect(201);
+    const { id } = await ctx.prisma.order.findUniqueOrThrow({ where: { number: res.body.number } });
+
+    ctx.telegramSend.mockReset();
+    ctx.telegramSend.mockImplementation(async (target: string) => {
+      throw target === '1001'
+        ? new Error('Telegram unreachable')
+        : new PermanentSendError('Telegram 403: bot was blocked by the user');
+    });
+    await ctx.notifications.processDue();
+
+    const rows = await ctx.prisma.notification.findMany({ where: { orderId: id }, orderBy: { target: 'asc' } });
+    const [retrying, failed] = rows;
+    expect(retrying).toMatchObject({ status: 'pending', attempts: 1, lastError: 'Telegram unreachable' });
+    expect(retrying!.nextAttemptAt.getTime()).toBeGreaterThan(Date.now() + 20_000);
+    expect(failed).toMatchObject({ status: 'failed', attempts: 1 });
+    expect(failed!.lastError).toContain('blocked');
+
+    // Not due yet, so nothing is sent again.
+    await ctx.notifications.processDue();
+    expect(ctx.telegramSend).toHaveBeenCalledTimes(2);
   });
 
   it('refuses drafts and unknown products with 422 and lists them', async () => {
@@ -109,14 +156,16 @@ describe('Orders (e2e)', () => {
     expect(res.body.issues).toEqual([expect.objectContaining({ path: 'customer.phone' })]);
   });
 
-  it('answers a bot that fills the honeypot, but saves nothing', async () => {
+  it('answers a bot that fills the honeypot, but saves and alerts nothing', async () => {
     const before = await ctx.prisma.order.count();
+    const alertsBefore = await ctx.prisma.notification.count();
     const res = await request(ctx.app.getHttpServer())
       .post('/api/orders')
       .send({ items: [{ slug: 'electrode-pads', qty: 1 }], customer, paymentMethod: 'cod', website: 'http://spam' })
       .expect(201);
     expect(res.body.number).toMatch(orderNumberPattern);
     expect(await ctx.prisma.order.count()).toBe(before);
+    expect(await ctx.prisma.notification.count()).toBe(alertsBefore);
   });
 
   it('refuses a POST from another website', () => {
@@ -140,14 +189,18 @@ describe('Enquiries (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('saves an enquiry and alerts the store', async () => {
+  it('saves an enquiry and queues its staff alerts', async () => {
     await request(ctx.app.getHttpServer())
       .post('/api/enquiries')
       .send({ name: customer.name, phone: customer.phone, role: 'student', topic: 'group-order', message: 'Ten tables' })
       .expect(201, { received: true });
-    const saved = await ctx.prisma.enquiry.findFirstOrThrow({ where: { name: customer.name } });
+    const saved = await ctx.prisma.enquiry.findFirstOrThrow({
+      where: { name: customer.name },
+      include: { notifications: true },
+    });
     expect(saved).toMatchObject({ role: 'student', topic: 'group-order', message: 'Ten tables', handledAt: null });
-    expect(ctx.notifyEnquiry).toHaveBeenCalledTimes(1);
+    expect(saved.notifications).toHaveLength(2);
+    expect(saved.notifications[0]!.text).toContain('New enquiry from E2E Test Customer');
   });
 
   it('rejects an empty message', () => {

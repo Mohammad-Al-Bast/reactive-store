@@ -107,8 +107,16 @@ Details that matter:
 - `POST /api/orders` merges repeated items, prices every line from the database, and refuses unavailable items with a 422 that lists them (the cart then drops them). Order numbers look like `RS-261105-K3QZ7W`: the date in Lebanon plus 6 random characters from `crypto.randomInt`. The order is saved with a retry if the number is already taken.
 - Form schemas, governorates, enquiry role and topic ids, and the message builders live in `packages/shared`. The browser validates with the same schemas as the API.
 - The API also refuses POSTs whose `Origin` isn't `WEB_ORIGIN`.
-- Enquiries send an email alert too, not only orders. Until the admin panel exists, that alert is the only way the store sees them.
-- Email alerts stay off until `SMTP_HOST` and `ORDER_ALERT_TO` are set; the API logs a warning at startup.
+- Enquiries send alerts too, not only orders. Until the admin panel exists, alerts are the only way the store sees them.
+- Alerts (Telegram and email) go through an outbox; see "Staff alerts" below. Each channel stays off until its env vars are set, and the API logs which channels are on at startup.
+
+### Staff alerts (added 2026-11-05)
+The store wanted a phone alert for each new order. We chose a **Telegram bot** for now: it's free and needs no approval. The WhatsApp Cloud API needs a Meta Business account, a second sender number and an approved message template, so it can come later as another channel. Unofficial WhatsApp libraries were ruled out because they can get the store's number banned.
+
+- **Outbox:** alerts are rows in a `Notification` table, written in the same transaction as the order or enquiry. A sender inside the API delivers them every 5 seconds, and straight after each commit. It claims each row before sending, so two API instances never send twice, and it frees rows left stuck in `sending` after a crash.
+- **Retries:** 8 attempts with growing delays (30s up to 1h), and it respects Telegram's `retry_after`. Errors that retrying can't fix (bad token, unknown chat, bot blocked) fail at once. Email alerts use the same path.
+- **Config:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS`, and `ADMIN_URL` for the "Open in dashboard" link. `npm run telegram:setup` finds chat ids.
+- **Phase 3:** show each order's alert status in the admin panel, with a resend button. Add WhatsApp Cloud API as a channel whenever the Meta setup is ready.
 
 ## Phase 3: Admin auth and admin panel
 **Auth (in the API):**
