@@ -178,8 +178,16 @@ These don't block building, but they do block launch or limit SEO:
 2. **Product details:** real values for the placeholders. Those products stay as drafts until then.
 3. **Product photos:** only 2 of 14 products have one, which hurts both sales and search
 4. **Arabic review:** I can draft the translation, but a fluent reader should check it, and someone qualified should check the **medical safety text** in particular
-5. **Email account:** SMTP details for order alerts
+5. **Email account (optional):** SMTP details, if you also want alerts by email
 6. **Privacy and terms review:** I can draft these, but they should be checked for Lebanese requirements
+7. **Telegram alerts for new orders** (about 5 minutes; the code is ready):
+   - [ ] In Telegram, message **@BotFather**, send `/newbot` and follow the steps. Put the token it gives you into `TELEGRAM_BOT_TOKEN` in `apps/api/.env`, and keep it private: anyone with it can post as your bot.
+   - [ ] Open your new bot and send it any message. For a shared chat, add the bot to a staff group and send a message there.
+   - [ ] Run `npm run telegram:setup -w @reactive-store/api` to list the chat ids that messaged the bot.
+   - [ ] Put the ids you want into `TELEGRAM_CHAT_IDS` (comma-separated), then send a test: `npm run telegram:setup -w @reactive-store/api -- <id>`.
+   - [ ] Restart the API and check its log says `telegram alerts on, to N recipient(s)`. Place a test order and check that the alert arrives.
+   - [ ] Once the site has a domain, set `ADMIN_URL` (e.g. `https://yourstore.com/admin`) so alerts link to the order.
+   - [ ] On the server, put the same `TELEGRAM_*` values in the production env.
 
 ## Verification
 - **API unit tests (Vitest):** server-side totals including "price on request", order ID format, refresh-token rotation and reuse detection
