@@ -8,15 +8,48 @@ on:
 
 jobs:
   check:
-    name: Lint, type-check & build
+    name: Lint, type-check, test & build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: reactive
+          POSTGRES_PASSWORD: reactive
+          POSTGRES_DB: reactive_store
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reactive -d reactive_store"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://reactive:reactive@localhost:5432/reactive_store?schema=public
+      WEB_ORIGIN: http://localhost:3000
+      ADMIN_ORIGIN: http://localhost:3002
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      # Builds packages/shared first, then checks every workspace.
       - run: npm run typecheck
-      - run: npm run build
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run db:deploy -w @reactive-store/api
+      - run: npm run db:seed
+      - run: npm run test:e2e -w @reactive-store/api
+      # The web build prerenders pages from the API, so build and start the API first.
+      - run: npm run build -w @reactive-store/shared -w @reactive-store/api
+      - name: Start API
+        run: |
+          node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001/api/health && exit 0; sleep 1; done
+          cat api.log; exit 1
+      - run: npm run build -w @reactive-store/web
+        env:
+          API_INTERNAL_URL: http://localhost:3001
+      - run: npm run build -w @reactive-store/admin

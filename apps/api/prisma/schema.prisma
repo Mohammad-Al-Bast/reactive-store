@@ -1,0 +1,304 @@
+// Reactive Store database schema (see docs/backend-plan.md, Phase 1).
+// Connection URL lives in prisma.config.ts (loaded from apps/api/.env).
+//
+// Enum values use underscores in TypeScript and are stored with the hyphenated
+// names from packages/shared (e.g. in_stock is stored as "in-stock").
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  // The API is native ESM (module: nodenext), so generated imports need .js extensions.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Locale {
+  en
+  ar
+}
+
+enum Stock {
+  in_stock  @map("in-stock")
+  low_stock @map("low-stock")
+  to_order  @map("to-order")
+}
+
+enum Audience {
+  clinic
+  home
+  student
+}
+
+enum ProductStatus {
+  draft
+  published
+}
+
+enum OrderStatus {
+  new
+  confirmed
+  out_for_delivery @map("out-for-delivery")
+  delivered
+  cancelled
+}
+
+enum PaymentMethod {
+  cod
+  wallet
+}
+
+enum NotificationChannel {
+  telegram
+  email
+}
+
+enum NotificationStatus {
+  pending
+  /// Claimed by the sender; reset to pending if it stays here too long (e.g. a crash).
+  sending
+  sent
+  /// Gave up: a permanent error, or too many attempts.
+  failed
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  refunded
+}
+
+// ─── Catalogue ──────────────────────────────────────────────────────────────
+
+model Category {
+  id           String                @id @default(uuid(7)) @db.Uuid
+  slug         String                @unique
+  sortOrder    Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  translations CategoryTranslation[]
+  products     Product[]
+}
+
+model CategoryTranslation {
+  categoryId  String   @db.Uuid
+  locale      Locale
+  name        String
+  short       String
+  description String
+  items       String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, locale])
+}
+
+model Product {
+  id           String               @id @default(uuid(7)) @db.Uuid
+  slug         String               @unique
+  categoryId   String               @db.Uuid
+  /// USD. Null means "price on request".
+  price        Decimal?             @db.Decimal(10, 2)
+  stock        Stock                @default(in_stock)
+  status       ProductStatus        @default(draft)
+  bestSeller   Boolean              @default(false)
+  audience     Audience[]
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  category     Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  translations ProductTranslation[]
+  images       ProductImage[]
+  related      ProductRelated[]     @relation("ProductRelatedFrom")
+  relatedTo    ProductRelated[]     @relation("ProductRelatedTo")
+  orderItems   OrderItem[]
+
+  @@index([categoryId, status, sortOrder])
+  @@index([status, sortOrder])
+}
+
+model ProductTranslation {
+  productId   String  @db.Uuid
+  locale      Locale
+  name        String
+  type        String
+  summary     String
+  badge       String?
+  description String?
+  /// { name, text }[]
+  modes       Json?
+  /// string[]
+  inTheBox    Json?
+  /// { label, value }[]
+  specs       Json?
+  safety      String?
+  /// { q, a }[]
+  faq         Json?
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, locale])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid(7)) @db.Uuid
+  productId String  @db.Uuid
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+}
+
+model ProductRelated {
+  productId String  @db.Uuid
+  relatedId String  @db.Uuid
+  sortOrder Int     @default(0)
+  product   Product @relation("ProductRelatedFrom", fields: [productId], references: [id], onDelete: Cascade)
+  related   Product @relation("ProductRelatedTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@id([productId, relatedId])
+}
+
+// ─── Orders and enquiries ───────────────────────────────────────────────────
+
+model Order {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  /// Customer-facing reference, e.g. RS-261105-K3QZ.
+  number         String               @unique
+  status         OrderStatus          @default(new)
+  paymentMethod  PaymentMethod
+  paymentStatus  PaymentStatus        @default(unpaid)
+  locale         Locale               @default(en)
+  customerName   String
+  phone          String
+  governorate    String
+  city           String
+  address        String
+  notes          String?
+  /// Sum of priced lines, in USD.
+  subtotal       Decimal              @db.Decimal(10, 2)
+  /// True when any line is "price on request", so the total must be confirmed.
+  totalToConfirm Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  items          OrderItem[]
+  statusHistory  OrderStatusHistory[]
+  notifications  Notification[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  orderId     String   @db.Uuid
+  /// Null if the product was later deleted; the copied fields below remain.
+  productId   String?  @db.Uuid
+  productSlug String
+  productName String
+  /// Unit price at the time of the order. Null means "price on request".
+  unitPrice   Decimal? @db.Decimal(10, 2)
+  quantity    Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  orderId     String      @db.Uuid
+  status      OrderStatus
+  note        String?
+  /// Null for changes made by the system (e.g. the order being placed).
+  changedById String?     @db.Uuid
+  createdAt   DateTime    @default(now())
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy   AdminUser?  @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+}
+
+model Enquiry {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  name          String
+  phone         String
+  role          String
+  topic         String?
+  message       String
+  locale        Locale         @default(en)
+  /// Set when an admin marks it handled.
+  handledAt     DateTime?
+  createdAt     DateTime       @default(now())
+  notifications Notification[]
+
+  @@index([handledAt, createdAt])
+}
+
+// ─── Store alerts ───────────────────────────────────────────────────────────
+
+/// Outbox of alerts to staff (Telegram, email). Rows are written in the same
+/// transaction as the order or enquiry, then delivered by a background sender
+/// with retries, so an alert is never lost and never blocks a customer.
+model Notification {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  channel       NotificationChannel
+  /// Telegram chat id, or email address.
+  target        String
+  subject       String?
+  text          String
+  status        NotificationStatus  @default(pending)
+  attempts      Int                 @default(0)
+  nextAttemptAt DateTime            @default(now())
+  lastError     String?
+  sentAt        DateTime?
+  orderId       String?             @db.Uuid
+  enquiryId     String?             @db.Uuid
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  order         Order?              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  enquiry       Enquiry?            @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([orderId])
+  @@index([enquiryId])
+}
+
+// ─── Admin auth ─────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id            String               @id @default(uuid(7)) @db.Uuid
+  email         String               @unique
+  name          String
+  /// argon2id hash
+  passwordHash  String
+  isActive      Boolean              @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  refreshTokens RefreshToken[]
+  statusChanges OrderStatusHistory[]
+}
+
+/// Rotating refresh tokens. Only a hash of the token is stored. Every token in a
+/// login session shares a familyId, so reuse of a rotated token revokes the family.
+model RefreshToken {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  adminUserId  String    @db.Uuid
+  familyId     String    @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  /// Set when this token was rotated, pointing at its replacement.
+  replacedById String?   @db.Uuid
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+  adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([familyId])
+}
