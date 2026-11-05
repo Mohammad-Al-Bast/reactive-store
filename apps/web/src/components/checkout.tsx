@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createOrderSchema,
@@ -182,7 +183,22 @@ export function Checkout() {
                 </Button>
               </div>
             ) : !cart.ready ? (
-              <p className="py-6 text-muted-foreground">{t("loading")}</p>
+              <div role="status" aria-live="polite">
+                <span className="sr-only">{t("loading")}</span>
+                {/* Placeholder rows shaped like cart lines, until product details arrive. */}
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-4 border-b border-[#efebe2] py-4.5 last:border-0">
+                    <Skeleton className="size-22 shrink-0 rounded-lg" />
+                    <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-2">
+                      <Skeleton className="h-4 w-3/5" />
+                      <Skeleton className="h-3.5 w-16" />
+                    </div>
+                    <Skeleton className="h-11 w-29" />
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="size-11" />
+                  </div>
+                ))}
+              </div>
             ) : null}
             <ul>
               {cart.lines.map(({ product, qty }) => (
@@ -305,7 +321,11 @@ export function Checkout() {
           <h2 className="text-lg font-bold">{t("summary")}</h2>
           <div className="flex justify-between gap-4 text-[15px]">
             <span className="text-muted-foreground">{t("itemsCount", { count: cart.count })}</span>
-            <span>{cart.subtotal > 0 ? price(cart.subtotal) : t("toBeConfirmed")}</span>
+            {cart.ready ? (
+              <span>{cart.subtotal > 0 ? price(cart.subtotal) : t("toBeConfirmed")}</span>
+            ) : (
+              <Skeleton className="h-5 w-20" />
+            )}
           </div>
           <div className="flex justify-between gap-4 text-[15px]">
             <span className="text-muted-foreground">{t("deliveryRow")}</span>
@@ -313,7 +333,11 @@ export function Checkout() {
           </div>
           <div className="flex justify-between gap-4 border-t border-border pt-3.5 text-xl font-bold">
             <span>{t("total")}</span>
-            <span>{cart.subtotal > 0 && !cart.hasUnpriced ? price(cart.subtotal) : t("confirmByPhone")}</span>
+            {cart.ready ? (
+              <span>{cart.subtotal > 0 && !cart.hasUnpriced ? price(cart.subtotal) : t("confirmByPhone")}</span>
+            ) : (
+              <Skeleton className="h-6 w-28" />
+            )}
           </div>
           <p className="-mt-2 text-[13px] text-muted-foreground">{t("plusDelivery")}</p>
           {cart.hasUnpriced ? <p className="text-[13px] text-muted-foreground">{t("someOnRequest")}</p> : null}

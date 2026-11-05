@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { useCart } from "@/components/cart-provider";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { site, telHref } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -75,14 +76,15 @@ function SearchForm({ className, onDone }: { className?: string; onDone?: () => 
 }
 
 function CartLink() {
-  const { count } = useCart();
+  const { count, hydrated } = useCart();
   const t = useTranslations("Header");
   return (
     <Button asChild>
-      <Link href="/cart" aria-label={t("cartLabel", { count })}>
+      <Link href="/cart" aria-label={hydrated ? t("cartLabel", { count }) : t("cart")}>
         <ShoppingCart />
         <span className="hidden sm:inline">{t("cart")}</span>
-        <span className="tabular-nums">{count}</span>
+        {/* The saved cart is only known in the browser; until then, a placeholder instead of "0". */}
+        {hydrated ? <span className="tabular-nums">{count}</span> : <Skeleton className="h-4 w-3 bg-white/30" />}
       </Link>
     </Button>
   );

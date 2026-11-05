@@ -11,8 +11,10 @@ type CartLineWithProduct = CartLine & { product: Product };
 
 type CartContextValue = {
   lines: CartLineWithProduct[];
-  /** Total quantity in the saved cart. Known as soon as the browser has read it. */
+  /** Total quantity in the saved cart. Known once `hydrated` is true. */
   count: number;
+  /** False during the server render and hydration, before the saved cart is read. */
+  hydrated: boolean;
   /** Sum of known prices; lines with "price on request" are excluded. */
   subtotal: number;
   hasUnpriced: boolean;
@@ -159,6 +161,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return {
       lines: withProduct,
       ready,
+      hydrated,
       error,
       retry: () => {
         setFailedKey(null);
@@ -191,7 +194,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       remove: (slug) => write(getSnapshot().filter((l) => l.slug !== slug)),
       clear: () => write([]),
     };
-  }, [lines, products, locale, ready, error]);
+  }, [lines, products, locale, ready, hydrated, error]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
