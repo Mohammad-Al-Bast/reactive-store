@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import { orderNumberPattern } from '@reactive-store/shared';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
 import { PermanentSendError } from '../src/notifications/channel.js';
 import { EmailChannel } from '../src/notifications/email.channel.js';
 import { NotificationsService } from '../src/notifications/notifications.service.js';
@@ -35,7 +36,7 @@ async function createApp(env: Record<string, string> = {}) {
     .useValue({ enabled: false, targets: [], send: vi.fn() })
     .compile();
   const app = moduleRef.createNestApplication();
-  app.setGlobalPrefix('api');
+  configureApp(app);
   await app.init();
   return { app, prisma: app.get(PrismaService), notifications: app.get(NotificationsService), telegramSend };
 }

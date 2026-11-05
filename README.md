@@ -85,6 +85,23 @@ API routes (all under `/api`): `GET /health`, `GET /categories`, `GET /products?
 `GET /products/:slug?locale=`, `POST /cart/resolve`, `POST /orders`, `POST /enquiries`.
 The two form endpoints are rate limited per IP and refuse POSTs from other websites.
 
+## Admin accounts
+
+There is no public sign-up. Create admins from the command line (the password is asked for
+without being shown):
+
+```bash
+npm run admin -w @reactive-store/api -- create you@example.com "Your Name"
+npm run admin -w @reactive-store/api -- password you@example.com   # change it, signs out everywhere
+npm run admin -w @reactive-store/api -- disable  you@example.com   # and enable
+npm run admin -w @reactive-store/api -- list
+```
+
+Set `JWT_SECRET` in `apps/api/.env` (the API refuses to start in production without it).
+Sessions use httpOnly cookies: a 15-minute access token and a 30-day refresh token that is
+replaced on every use. Signing out, changing a password or disabling an admin takes effect
+immediately.
+
 ## New-order alerts on Telegram
 
 Every new order and enquiry sends a message to staff on Telegram. To set it up:
