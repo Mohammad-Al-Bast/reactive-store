@@ -14,23 +14,24 @@ import { site } from "@/lib/site";
 import "../../globals.css";
 
 // Self-hosted variable fonts: no request to Google at build or run time.
-const newsreader = localFont({
-  src: "../../fonts/newsreader-latin-wght-normal.woff2",
-  variable: "--font-newsreader",
-  weight: "200 800",
-  display: "swap",
-});
-
-const publicSans = localFont({
-  src: "../../fonts/public-sans-latin-wght-normal.woff2",
-  variable: "--font-public-sans",
+// Fraunces (headings) carries its optical-size axis, so large headings get the display cut.
+const fraunces = localFont({
+  src: "../../fonts/fraunces-latin-opsz-normal.woff2",
+  variable: "--font-fraunces",
   weight: "100 900",
   display: "swap",
 });
 
+const dmSans = localFont({
+  src: "../../fonts/dm-sans-latin-wght-normal.woff2",
+  variable: "--font-dm-sans",
+  weight: "100 1000",
+  display: "swap",
+});
+
 // Arabic: each Latin font falls back to these for Arabic letters (see globals.css).
-// Markazi Text (headings) is a Naskh drawn to sit beside Latin serifs like Newsreader;
-// IBM Plex Sans Arabic (text) matches Public Sans. The unicode-range means they are
+// Markazi Text (headings) is a Naskh drawn to sit beside Latin serifs like Fraunces;
+// IBM Plex Sans Arabic is the text face. The unicode-range means they are
 // only downloaded when a page has Arabic text, so English pages don't pay for them;
 // `preload` is off for the same reason. (Font loader options must be literals.)
 const markaziText = localFont({
@@ -56,7 +57,7 @@ const plexSansArabic = localFont({
   declarations: [{ prop: "unicode-range", value: "U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F" }],
 });
 
-const fontVariables = [newsreader, publicSans, markaziText, plexSansArabic].map((f) => f.variable).join(" ");
+const fontVariables = [fraunces, dmSans, markaziText, plexSansArabic].map((f) => f.variable).join(" ");
 
 export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
   const locale = await pageLocale(params);

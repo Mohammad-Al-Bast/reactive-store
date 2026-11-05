@@ -3,17 +3,18 @@ import localFont from "next/font/local";
 
 import "./globals.css";
 
-const newsreader = localFont({
-  src: "./fonts/newsreader-latin-wght-normal.woff2",
-  variable: "--font-newsreader",
-  weight: "200 800",
+// Same fonts as the store: Fraunces for headings, DM Sans for text.
+const fraunces = localFont({
+  src: "./fonts/fraunces-latin-opsz-normal.woff2",
+  variable: "--font-fraunces",
+  weight: "100 900",
   display: "swap",
 });
 
-const publicSans = localFont({
-  src: "./fonts/public-sans-latin-wght-normal.woff2",
-  variable: "--font-public-sans",
-  weight: "100 900",
+const dmSans = localFont({
+  src: "./fonts/dm-sans-latin-wght-normal.woff2",
+  variable: "--font-dm-sans",
+  weight: "100 1000",
   display: "swap",
 });
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 /** Root layout for the admin site: English only and never indexed. */
 export default function AdminRootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" dir="ltr" className={`${newsreader.variable} ${publicSans.variable} h-full`}>
+    <html lang="en" dir="ltr" className={`${fraunces.variable} ${dmSans.variable} h-full`}>
       <body className="min-h-full bg-background">{children}</body>
     </html>
   );
