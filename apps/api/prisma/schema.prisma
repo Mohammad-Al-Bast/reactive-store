@@ -1,0 +1,14 @@
+// Reactive Store database schema. Models are added in Phase 1 (see docs/backend-plan.md).
+// Connection URL lives in prisma.config.ts (loaded from apps/api/.env).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  // The API is native ESM (module: nodenext), so generated imports need .js extensions.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

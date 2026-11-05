@@ -43,7 +43,7 @@ Turborepo (or Nx) can be added later for cached builds if CI gets slow. It's not
   - **Email:** Nodemailer over SMTP, so the provider can be swapped
   - **Images:** `sharp` converts uploads to WebP
 - **Proxy (`caddy`):** automatic HTTPS. `/api/*` goes to Nest, `/uploads/*` is served from disk, and everything else goes to Next. Everything is one origin, so cookies work without CORS.
-- **Tests:** Jest and supertest for the API (Nest's default), Vitest for web and shared, Playwright end-to-end. The repo has no tests today.
+- **Tests:** Vitest everywhere (NestJS 12's default), supertest for API end-to-end, Playwright for the browser. The API lints with oxlint (also Nest 12's default), web keeps ESLint.
 
 Stock stays as the existing three statuses (in stock, low stock, to order). There is no quantity counting, so nothing can go wrong with automatic deductions, and it can be added later.
 
@@ -57,7 +57,7 @@ Stock stays as the existing three statuses (in stock, low stock, to order). Ther
 - Move the current app into `apps/web` with `git mv`, keeping its history. Add a root `package.json` with workspaces, and check that `lint`, `typecheck` and `build` still pass.
 - Scaffold `apps/api` with the Nest CLI and Prisma, and create `packages/shared`.
 - Add Docker Compose for local Postgres, and an `.env.example` for each app.
-- **CI:** split the job into api and web steps. The web build needs a running API from Phase 1 onwards (see "Deploy early"), so CI uses a `postgres:17` service: run `prisma migrate deploy`, seed, start the API, then build web. Add the test suites once they exist.
+- **CI:** runs typecheck, lint, test and build across all workspaces (done in Phase 0). From Phase 1 the web build needs a running API (see "Deploy early"), so Phase 1 adds a `postgres:17` service to CI: run `prisma migrate deploy`, seed, start the API, then build web.
 
 ## Phase 1: Database, catalogue API and locale routing, deployed early
 **Prisma schema:**
@@ -162,7 +162,7 @@ These don't block building, but they do block launch or limit SEO:
 6. **Privacy and terms review:** I can draft these, but they should be checked for Lebanese requirements
 
 ## Verification
-- **API unit tests (Jest):** server-side totals including "price on request", order ID format, refresh-token rotation and reuse detection
+- **API unit tests (Vitest):** server-side totals including "price on request", order ID format, refresh-token rotation and reuse detection
 - **Shared (Vitest):** Zod schemas, phone number matching
 - **API end-to-end (supertest against a test database):** order creation, a tampered price being ignored, admin routes returning 401 without a token, and rate limits triggering
 - **End-to-end (Playwright), in both languages:** browse → cart → checkout → order in the database → appears in admin → status change recorded in history
