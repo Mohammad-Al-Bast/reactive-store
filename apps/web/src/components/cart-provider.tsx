@@ -24,6 +24,8 @@ type CartContextValue = {
   /** True when product details could not be loaded; call `retry`. */
   error: boolean;
   retry: () => void;
+  /** Forgets loaded product details and fetches them again (e.g. after an order is refused). */
+  refresh: () => void;
   add: (slug: string, qty?: number) => void;
   setQty: (slug: string, qty: number) => void;
   remove: (slug: string) => void;
@@ -161,6 +163,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       retry: () => {
         setFailedKey(null);
         setAttempt((n) => n + 1);
+      },
+      refresh: () => {
+        setProducts({});
+        setFailedKey(null);
       },
       count: lines.reduce((n, l) => n + l.qty, 0),
       subtotal: withProduct.reduce((s, l) => s + (l.product.price ?? 0) * l.qty, 0),

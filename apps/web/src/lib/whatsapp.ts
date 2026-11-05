@@ -1,67 +1,44 @@
-import { formatPrice, site } from "@/lib/site";
-import type { Product } from "@/lib/products";
+import {
+  buildEnquiryMessage as buildEnquiryText,
+  buildOrderMessage as buildOrderText,
+  type EnquiryRole,
+  type EnquiryTopic,
+  type OrderSummary,
+} from "@reactive-store/shared";
 
-export type OrderDetails = {
-  name: string;
-  phone: string;
-  governorate: string;
-  city: string;
-  address: string;
-  payment: string;
-  notes?: string;
+import { site } from "@/lib/site";
+
+/** Display labels for the enquiry form's role and topic ids. */
+export const roleLabels: Record<EnquiryRole, string> = {
+  physiotherapist: "Physiotherapist",
+  "massage-therapist": "Massage or recovery therapist",
+  "cupping-practitioner": "Hijama / cupping practitioner",
+  "acupuncture-practitioner": "Acupuncture practitioner",
+  clinic: "Clinic or centre",
+  student: "Student or trainee",
+  "home-care": "Individual / family (home care)",
 };
 
-export type OrderLine = { qty: number; product: Product };
+export const topicLabels: Record<EnquiryTopic, string> = {
+  "product-advice": "Product advice",
+  "practice-quote": "Quote for a practice",
+  "group-order": "Student or group order",
+  "existing-order": "Existing order",
+  "warranty-repair": "Warranty or repair",
+};
 
-export function makeOrderId() {
-  const d = new Date();
-  const stamp = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `RS-${stamp}-${rand}`;
+/** The saved order as a WhatsApp message, using the prices the API confirmed. */
+export function buildOrderMessage(order: OrderSummary) {
+  const paymentLabel = site.paymentMethods.find((p) => p.id === order.paymentMethod)?.name ?? order.paymentMethod;
+  return buildOrderText(order, { storeName: site.name, paymentLabel });
 }
 
-/** The order as a plain-text WhatsApp message the store can read at a glance. */
-export function buildOrderMessage(orderId: string, lines: OrderLine[], d: OrderDetails) {
-  const payment = site.paymentMethods.find((p) => p.id === d.payment)?.name ?? d.payment;
-  const subtotal = lines.reduce((s, l) => s + (l.product.price ?? 0) * l.qty, 0);
-  const unpriced = lines.some((l) => l.product.price == null);
-
-  const items = lines.map((l) => {
-    const price = l.product.price == null ? "price on request" : formatPrice(l.product.price * l.qty);
-    return `• ${l.qty} × ${l.product.name} — ${price}`;
-  });
-
-  return [
-    `New order ${orderId} — ${site.name}`,
-    "",
-    ...items,
-    "",
-    `Subtotal: ${subtotal > 0 ? formatPrice(subtotal) : "to be confirmed"}${unpriced && subtotal > 0 ? " + items on request" : ""}`,
-    `Payment: ${payment}`,
-    "",
-    `Name: ${d.name}`,
-    `Phone: ${d.phone}`,
-    `Area: ${d.city}, ${d.governorate}`,
-    `Address: ${d.address}`,
-    d.notes ? `Notes: ${d.notes}` : "",
-  ]
-    .filter((line, i, all) => !(line === "" && all[i - 1] === ""))
-    .join("\n")
-    .trim();
-}
-
-export type EnquiryDetails = { name: string; phone: string; role: string; topic?: string; message: string };
+export type EnquiryDetails = { name: string; phone: string; role: EnquiryRole; topic?: EnquiryTopic; message: string };
 
 export function buildEnquiryMessage(d: EnquiryDetails) {
-  return [
-    `Hello ${site.name},`,
-    "",
-    d.message,
-    "",
-    `— ${d.name} (${d.role})`,
-    d.topic ? `Topic: ${d.topic}` : null,
-    `Phone: ${d.phone}`,
-  ]
-    .filter((line) => line !== null)
-    .join("\n");
+  return buildEnquiryText(d, {
+    storeName: site.name,
+    roleLabel: roleLabels[d.role],
+    topicLabel: d.topic ? topicLabels[d.topic] : undefined,
+  });
 }

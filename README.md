@@ -11,7 +11,8 @@ A monorepo with npm workspaces. The backend is being built in phases; see
 | `apps/api` | REST API under `/api`. NestJS 12 · Prisma 7 · PostgreSQL 17 |
 | `packages/shared` | Zod schemas, enums and types used by both apps |
 
-Until the backend phases land, orders and enquiries are still sent to the store's WhatsApp.
+Orders and enquiries are saved in the database and emailed to the store. Customers can also
+send them on WhatsApp from the confirmation screen, but they don't have to.
 
 ## Run it
 
@@ -50,7 +51,9 @@ npm run build                              # needs the API on :3001
 | Product photos | `apps/web/public/images/` (then add a `ProductImage` row with `url: "/images/your-file.jpg"`) |
 | Logo / favicon | `apps/web/public/images/logo.png`, `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png` |
 | Brand colours and fonts | `apps/web/src/app/globals.css` |
-| WhatsApp order message format | `apps/web/src/lib/whatsapp.ts` |
+| Order and enquiry message format (WhatsApp and email alerts) | `packages/shared/src/messages.ts` |
+| Enquiry form roles and topics | ids in `packages/shared/src/forms.ts`, labels in `apps/web/src/lib/whatsapp.ts` |
+| Order alert email, rate limits | `SMTP_*`, `ORDER_ALERT_TO` and `SUBMIT_RATE_LIMIT` in `apps/api/.env` |
 | Database schema | `apps/api/prisma/schema.prisma` |
 
 Anything still in `[brackets]` is a fact only the store can confirm (prices, warranty,
@@ -72,12 +75,13 @@ without one, such as `/shop`, redirect to `/en/shop`.
 | `/en/shop`, `/en/shop?q=search` | All products, with search, filters and sort |
 | `/en/shop/[category]` | One department |
 | `/en/product/[slug]` | Product page |
-| `/en/cart` | Cart and checkout (sends the order to WhatsApp) |
+| `/en/cart` | Cart and checkout (saves the order; WhatsApp is optional) |
 | `/en/about` | About us |
 | `/en/contact` | Contact, opening hours and delivery / payment / warranty FAQ |
 
 API routes (all under `/api`): `GET /health`, `GET /categories`, `GET /products?category=&locale=`,
-`GET /products/:slug?locale=`, `POST /cart/resolve`.
+`GET /products/:slug?locale=`, `POST /cart/resolve`, `POST /orders`, `POST /enquiries`.
+The two form endpoints are rate limited per IP and refuse POSTs from other websites.
 
 ## Adding more shadcn/ui components
 

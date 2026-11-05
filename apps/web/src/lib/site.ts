@@ -1,3 +1,5 @@
+import { formatUsd, governorates } from "@reactive-store/shared";
+
 /**
  * Store-wide settings. Everything a customer reads about delivery, payment,
  * warranty and how to reach you lives here — edit this one file.
@@ -41,16 +43,8 @@ export const site = {
     { id: "wallet", name: "Whish / OMT", description: "Transfer before dispatch" },
   ],
 
-  governorates: [
-    "Beirut",
-    "Mount Lebanon",
-    "North",
-    "Akkar",
-    "Bekaa",
-    "Baalbek-Hermel",
-    "South",
-    "Nabatieh",
-  ],
+  /** Shared with the API, which validates checkout against the same list. */
+  governorates,
 
   currency: "USD",
 } as const;
@@ -64,9 +58,5 @@ export function whatsappHref(message?: string) {
 
 export function formatPrice(price: number | null | undefined) {
   if (price == null) return "Price on request";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: site.currency,
-    maximumFractionDigits: 2,
-  }).format(price);
+  return formatUsd(price);
 }

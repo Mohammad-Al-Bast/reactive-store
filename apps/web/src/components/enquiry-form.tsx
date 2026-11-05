@@ -1,45 +1,37 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle } from "lucide-react";
+import { Check, MessageCircle } from "lucide-react";
+import { useLocale } from "next-intl";
+import {
+  createEnquirySchema,
+  enquiryRoles,
+  enquiryTopics,
+  HONEYPOT_FIELD,
+  type CreateEnquiryInput,
+  type EnquiryRole,
+  type EnquiryTopic,
+} from "@reactive-store/shared";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { whatsappHref } from "@/lib/site";
-import { buildEnquiryMessage } from "@/lib/whatsapp";
+import { fieldErrors, postJson } from "@/lib/api-client";
+import { site, whatsappHref } from "@/lib/site";
+import { buildEnquiryMessage, roleLabels, topicLabels, type EnquiryDetails } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
-
-export const roles = [
-  "Physiotherapist",
-  "Massage or recovery therapist",
-  "Hijama / cupping practitioner",
-  "Acupuncture practitioner",
-  "Clinic or centre",
-  "Student or trainee",
-  "Individual / family (home care)",
-];
-
-const topics = [
-  "Product advice",
-  "Quote for a practice",
-  "Student or group order",
-  "Existing order",
-  "Warranty or repair",
-];
 
 type Errors = Partial<Record<"name" | "phone" | "message", string>>;
 
 /**
- * Sends the enquiry to the store's WhatsApp with everything pre-filled.
- * No server needed; swap `onSubmit` for an API call when you add one.
+ * Saves the enquiry to the store, then offers to send it on WhatsApp as well.
  */
 export function EnquiryForm({
   withTopic = false,
   title,
-  submitLabel = "Send on WhatsApp",
+  submitLabel = "Send message",
   messagePlaceholder = "e.g. a TENS unit for home use, or a table and cupping set for a new practice",
   className,
 }: {
@@ -49,37 +41,96 @@ export function EnquiryForm({
   messagePlaceholder?: string;
   className?: string;
 }) {
+  const locale = useLocale();
   const [errors, setErrors] = React.useState<Errors>({});
-  const ids = { name: React.useId(), phone: React.useId(), role: React.useId(), topic: React.useId(), msg: React.useId() };
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [sent, setSent] = React.useState<EnquiryDetails | null>(null);
+  const ids = {
+    name: React.useId(),
+    phone: React.useId(),
+    role: React.useId(),
+    topic: React.useId(),
+    msg: React.useId(),
+    hp: React.useId(),
+  };
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting) return;
     const f = new FormData(e.currentTarget);
-    const data = {
+    const details: EnquiryDetails = {
       name: String(f.get("name") ?? "").trim(),
       phone: String(f.get("phone") ?? "").trim(),
-      role: String(f.get("role") ?? ""),
-      topic: withTopic ? String(f.get("topic") ?? "") : undefined,
+      role: String(f.get("role") ?? "") as EnquiryRole,
+      topic: withTopic ? (String(f.get("topic") ?? "") as EnquiryTopic) : undefined,
       message: String(f.get("message") ?? "").trim(),
     };
-    const next: Errors = {};
-    if (!data.name) next.name = "Enter your name.";
-    if (data.phone.replace(/\D/g, "").length < 7) next.phone = "Enter a phone number we can reach you on.";
-    if (!data.message) next.message = "Tell us what you need.";
-    setErrors(next);
-    if (Object.keys(next).length) return;
-    window.open(whatsappHref(buildEnquiryMessage(data)), "_blank", "noopener");
+    const enquiry: CreateEnquiryInput = {
+      ...details,
+      locale: locale as CreateEnquiryInput["locale"],
+      [HONEYPOT_FIELD]: String(f.get(HONEYPOT_FIELD) ?? "") || undefined,
+    };
+
+    const check = createEnquirySchema.safeParse(enquiry);
+    if (!check.success) {
+      setErrors(fieldErrors(check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))));
+      return;
+    }
+    setErrors({});
+    setFormError(null);
+    setSubmitting(true);
+    const res = await postJson<{ received: true }>("/enquiries", enquiry);
+    setSubmitting(false);
+
+    if (res.ok) setSent(details);
+    else if (res.status === 400) setErrors(fieldErrors(res.body.issues));
+    else if (res.status === 429) setFormError("Too many messages. Please wait a few minutes, or message us on WhatsApp.");
+    else setFormError("We couldn't send your message. Try again, or message us on WhatsApp.");
   }
 
   const clear = (key: keyof Errors) => () => errors[key] && setErrors((e) => ({ ...e, [key]: undefined }));
+
+  if (sent) {
+    return (
+      <div
+        role="status"
+        className={cn("flex flex-col items-start gap-4 rounded-2xl border border-border bg-card p-6 sm:p-10", className)}
+      >
+        <span className="flex size-12 items-center justify-center rounded-full bg-[#e6f0e9]">
+          <Check aria-hidden="true" className="size-6 text-success" strokeWidth={2.2} />
+        </span>
+        <h2 className="display text-3xl">Thank you, {sent.name.split(" ")[0]}.</h2>
+        <p className="text-body">
+          We have your message and will reply to {sent.phone} within {site.replyTime}. For a faster answer, you can also
+          send it to us on WhatsApp.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild size="lg">
+            <a href={whatsappHref(buildEnquiryMessage(sent))} target="_blank" rel="noreferrer">
+              <MessageCircle /> Send on WhatsApp
+            </a>
+          </Button>
+          <Button type="button" size="lg" variant="outline" onClick={() => setSent(null)}>
+            Send another message
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
       noValidate
       onSubmit={onSubmit}
-      className={cn("grid gap-5 rounded-2xl border border-border bg-card p-6 sm:grid-cols-2 sm:p-10", className)}
+      className={cn("relative grid gap-5 rounded-2xl border border-border bg-card p-6 sm:grid-cols-2 sm:p-10", className)}
     >
       {title ? <h2 className="display text-3xl sm:col-span-2">{title}</h2> : null}
+      {/* Honeypot: hidden from people, so only bots fill it in. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
+        <label htmlFor={ids.hp}>Leave this empty</label>
+        <input id={ids.hp} name={HONEYPOT_FIELD} type="text" tabIndex={-1} autoComplete="off" />
+      </div>
       <div className="grid gap-2">
         <Label htmlFor={ids.name}>Full name</Label>
         <Input id={ids.name} name="name" autoComplete="name" aria-invalid={!!errors.name} onChange={clear("name")} />
@@ -101,8 +152,10 @@ export function EnquiryForm({
       <div className={cn("grid gap-2", !withTopic && "sm:col-span-2")}>
         <Label htmlFor={ids.role}>I am a…</Label>
         <NativeSelect id={ids.role} name="role">
-          {roles.map((r) => (
-            <option key={r}>{r}</option>
+          {enquiryRoles.map((r) => (
+            <option key={r} value={r}>
+              {roleLabels[r]}
+            </option>
           ))}
         </NativeSelect>
       </div>
@@ -110,8 +163,10 @@ export function EnquiryForm({
         <div className="grid gap-2">
           <Label htmlFor={ids.topic}>Topic</Label>
           <NativeSelect id={ids.topic} name="topic">
-            {topics.map((t) => (
-              <option key={t}>{t}</option>
+            {enquiryTopics.map((t) => (
+              <option key={t} value={t}>
+                {topicLabels[t]}
+              </option>
             ))}
           </NativeSelect>
         </div>
@@ -128,12 +183,17 @@ export function EnquiryForm({
         />
         {errors.message ? <p className="text-sm text-destructive">{errors.message}</p> : null}
       </div>
+      {formError ? (
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
+          {formError}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4 sm:col-span-2">
         <span className="text-[13px] text-muted-foreground">
-          Opens WhatsApp with your message ready to send. We only use your details to reply to you.
+          We only use your details to reply to you.
         </span>
-        <Button type="submit" size="lg">
-          <MessageCircle /> {submitLabel}
+        <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting}>
+          {submitting ? "Sending…" : submitLabel}
         </Button>
       </div>
     </form>

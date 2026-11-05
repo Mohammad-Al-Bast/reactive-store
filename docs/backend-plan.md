@@ -103,6 +103,13 @@ Details that matter:
 - **`POST /api/enquiries`:** saves `EnquiryForm` submissions (`enquiry-form.tsx`), with the WhatsApp button kept.
 - **Abuse protection:** `@nestjs/throttler` limits on orders, enquiries and admin login. In-memory storage is fine on a single API instance; move it to Redis if the API is ever scaled out. Forms also get a hidden honeypot field.
 
+**Progress (2026-11-05):** done.
+- `POST /api/orders` merges repeated items, prices every line from the database, and refuses unavailable items with a 422 that lists them (the cart then drops them). Order numbers look like `RS-261105-K3QZ7W`: the date in Lebanon plus 6 random characters from `crypto.randomInt`. The order is saved with a retry if the number is already taken.
+- Form schemas, governorates, enquiry role and topic ids, and the message builders live in `packages/shared`. The browser validates with the same schemas as the API.
+- The API also refuses POSTs whose `Origin` isn't `WEB_ORIGIN`.
+- Enquiries send an email alert too, not only orders. Until the admin panel exists, that alert is the only way the store sees them.
+- Email alerts stay off until `SMTP_HOST` and `ORDER_ALERT_TO` are set; the API logs a warning at startup.
+
 ## Phase 3: Admin auth and admin panel
 **Auth (in the API):**
 - `POST /api/auth/login` checks email and password (`argon2`) and sets two **httpOnly, Secure, SameSite=Lax** cookies:

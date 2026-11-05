@@ -12,47 +12,88 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  createOrderSchema,
+  HONEYPOT_FIELD,
+  type CreateOrderInput,
+  type OrderSummary,
+  type PaymentMethod,
+} from "@reactive-store/shared";
+import { useLocale } from "next-intl";
+
+import { fieldErrors, postJson } from "@/lib/api-client";
 import { formatPrice, site, telHref, whatsappHref } from "@/lib/site";
-import { buildOrderMessage, makeOrderId, type OrderDetails } from "@/lib/whatsapp";
+import { buildOrderMessage } from "@/lib/whatsapp";
 
 type Field = "name" | "phone" | "city" | "address";
 type Errors = Partial<Record<Field, string>>;
+const fields: Field[] = ["name", "phone", "city", "address"];
 
 export function Checkout() {
   const cart = useCart();
-  const [payment, setPayment] = React.useState<string>(site.paymentMethods[0].id);
+  const locale = useLocale();
+  const [payment, setPayment] = React.useState<PaymentMethod>(site.paymentMethods[0].id);
   const [errors, setErrors] = React.useState<Errors>({});
-  const [placed, setPlaced] = React.useState<{ id: string; href: string } | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [placed, setPlaced] = React.useState<OrderSummary | null>(null);
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function showErrors(next: Errors) {
+    setErrors(next);
+    const first = fields.find((k) => next[k]);
+    if (first) document.getElementById(`co-${first}`)?.focus();
+  }
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting) return;
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "").trim();
-    const details: OrderDetails = {
-      name: get("name"),
-      phone: get("phone"),
-      governorate: get("governorate"),
-      city: get("city"),
-      address: get("address"),
-      payment,
-      notes: get("notes") || undefined,
+    const order: CreateOrderInput = {
+      locale: locale as CreateOrderInput["locale"],
+      items: cart.lines.map((l) => ({ slug: l.slug, qty: l.qty })),
+      customer: {
+        name: get("name"),
+        phone: get("phone"),
+        governorate: get("governorate") as CreateOrderInput["customer"]["governorate"],
+        city: get("city"),
+        address: get("address"),
+        notes: get("notes") || undefined,
+      },
+      paymentMethod: payment,
+      [HONEYPOT_FIELD]: get(HONEYPOT_FIELD) || undefined,
     };
-    const next: Errors = {};
-    if (!details.name) next.name = "Enter your full name.";
-    if (details.phone.replace(/\D/g, "").length < 7) next.phone = "Enter a phone number we can call or WhatsApp.";
-    if (!details.city) next.city = "Enter your city or area.";
-    if (!details.address) next.address = "Enter the building, floor or a nearby landmark.";
-    setErrors(next);
-    if (Object.keys(next).length) {
-      const first = Object.keys(next)[0];
-      document.getElementById(`co-${first}`)?.focus();
+
+    // Same schema the API uses, so most mistakes are caught before the request.
+    const check = createOrderSchema.safeParse(order);
+    if (!check.success) {
+      showErrors(fieldErrors(check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))));
       return;
     }
-    const id = makeOrderId();
-    const href = whatsappHref(buildOrderMessage(id, cart.lines, details));
-    window.open(href, "_blank", "noopener");
-    setPlaced({ id, href });
-    cart.clear();
+    setErrors({});
+    setFormError(null);
+    setSubmitting(true);
+    const res = await postJson<OrderSummary>("/orders", order);
+    setSubmitting(false);
+
+    if (res.ok) {
+      setPlaced(res.data);
+      cart.clear();
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    if (res.status === 400) {
+      showErrors(fieldErrors(res.body.issues));
+    } else if (res.status === 422) {
+      setFormError("Some items are no longer available and have been removed. Check your order and try again.");
+      cart.refresh();
+    } else if (res.status === 429) {
+      setFormError(`Too many attempts. Please wait a few minutes, or call us on ${site.phoneDisplay}.`);
+    } else {
+      setFormError(
+        `We couldn't place your order. Check your connection and try again, or call us on ${site.phoneDisplay}.`,
+      );
+    }
   }
 
   const clear = (k: Field) => () => errors[k] && setErrors((e) => ({ ...e, [k]: undefined }));
@@ -63,15 +104,18 @@ export function Checkout() {
         <span className="flex size-18 items-center justify-center rounded-full bg-[#e6f0e9]">
           <Check aria-hidden="true" className="size-9 text-success" strokeWidth={2.2} />
         </span>
-        <h1 className="display text-[44px] leading-[1.1]">Thank you, almost done.</h1>
-        <p className="text-[17px] text-body">
-          Your order <strong>{placed.id}</strong> opened in WhatsApp. <strong>Press send there</strong> so it reaches us,
-          and we will confirm the total, delivery time and fees within one working day.
+        <h1 className="display text-[44px] leading-[1.1]">Thank you, we have your order.</h1>
+        <p className="text-[17px] text-body" role="status">
+          Your order number is <strong>{placed.number}</strong>. We will call you to confirm the total, delivery time
+          and fees within {site.replyTime}.
+        </p>
+        <p className="text-[15px] text-muted-foreground">
+          Want a faster reply? You can also send the order to us on WhatsApp. This is optional.
         </p>
         <div className="mt-2 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
-            <a href={placed.href} target="_blank" rel="noreferrer">
-              <MessageCircle /> WhatsApp didn&apos;t open? Try again
+            <a href={whatsappHref(buildOrderMessage(placed))} target="_blank" rel="noreferrer">
+              <MessageCircle /> Send on WhatsApp
             </a>
           </Button>
           <Button asChild size="lg" variant="outline">
@@ -103,10 +147,15 @@ export function Checkout() {
     <div className="container-page py-10 pb-22">
       <h1 className="display mb-2 text-[clamp(2.1rem,4vw,3rem)]">Your order</h1>
       <p className="mb-8 text-muted-foreground">
-        No account needed. Your order is sent to us on WhatsApp and we confirm it with you before delivery.
+        No account needed. We confirm your order with you by phone before delivery.
       </p>
 
-      <form noValidate onSubmit={onSubmit} className="flex flex-col gap-8 lg:flex-row lg:items-start">
+      <form noValidate onSubmit={onSubmit} className="relative flex flex-col gap-8 lg:flex-row lg:items-start">
+        {/* Honeypot: hidden from people, so only bots fill it in. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
+          <label htmlFor="co-website">Leave this empty</label>
+          <input id="co-website" name={HONEYPOT_FIELD} type="text" tabIndex={-1} autoComplete="off" />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <section aria-labelledby="h-items" className="rounded-2xl border border-border bg-card p-6">
             <h2 id="h-items" className="mb-2 text-lg font-bold">
@@ -219,7 +268,7 @@ export function Checkout() {
             <h2 id="h-pay" className="mb-4 text-lg font-bold">
               3. Payment
             </h2>
-            <RadioGroup aria-labelledby="h-pay" value={payment} onValueChange={setPayment} className="sm:grid-cols-2">
+            <RadioGroup aria-labelledby="h-pay" value={payment} onValueChange={(v) => setPayment(v as PaymentMethod)} className="sm:grid-cols-2">
               {site.paymentMethods.map((m) => (
                 <RadioCard key={m.id} value={m.id}>
                   <span className="text-[15px] font-bold">{m.name}</span>
@@ -244,12 +293,23 @@ export function Checkout() {
             <span>Total</span>
             <span>{cart.subtotal > 0 && !cart.hasUnpriced ? formatPrice(cart.subtotal) : "We confirm by phone"}</span>
           </div>
-          <p className="-mt-2 text-[13px] text-muted-foreground">Plus delivery, confirmed with you on WhatsApp.</p>
+          <p className="-mt-2 text-[13px] text-muted-foreground">Plus delivery, confirmed with you by phone.</p>
           {cart.hasUnpriced ? (
             <p className="text-[13px] text-muted-foreground">Some items are priced on request; we confirm the total before delivery.</p>
           ) : null}
-          <Button type="submit" size="lg" className="mt-1.5" disabled={!cart.ready || cart.lines.length === 0}>
-            <MessageCircle /> Send order on WhatsApp
+          {formError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {formError}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            size="lg"
+            className="mt-1.5"
+            disabled={!cart.ready || cart.lines.length === 0 || submitting}
+            aria-busy={submitting}
+          >
+            {submitting ? "Placing your order…" : "Place order"}
           </Button>
           <p className="text-center text-[13px] text-muted-foreground">You pay nothing until we confirm your order by phone.</p>
           <div className="flex flex-col gap-2.5 border-t border-[#efebe2] pt-3.5 text-sm">
