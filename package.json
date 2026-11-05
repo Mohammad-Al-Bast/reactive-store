@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build:shared": "npm run build -w @reactive-store/shared",
-    "dev": "npm run build:shared && npm run dev -w @reactive-store/web",
+    "dev": "npm run build:shared && concurrently --names api,web,admin --prefix-colors blue,green,magenta \"npm run start:dev -w @reactive-store/api\" \"npm run dev -w @reactive-store/web\" \"npm run dev -w @reactive-store/admin\"",
+    "dev:web": "npm run build:shared && npm run dev -w @reactive-store/web",
     "dev:admin": "npm run build:shared && npm run dev -w @reactive-store/admin",
     "dev:api": "npm run build:shared && npm run start:dev -w @reactive-store/api",
     "build": "npm run build --workspaces --if-present",
@@ -21,5 +22,8 @@
     "db:up": "docker compose up -d postgres",
     "db:migrate": "npm run db:migrate -w @reactive-store/api",
     "db:seed": "npm run db:seed -w @reactive-store/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
   }
 }

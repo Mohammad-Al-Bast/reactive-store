@@ -29,10 +29,13 @@ npm run db:up      # Postgres 17 in Docker, on localhost:5433
 npm run db:migrate # create the tables
 npm run db:seed    # import the starting catalogue (safe to re-run)
 
-npm run dev:api    # API at http://localhost:3001/api/health
-npm run dev        # store at http://localhost:3000 (redirects to /en)
-npm run dev:admin  # admin panel at http://localhost:3002
+npm run dev        # API, store and admin together, in one terminal:
+                   #   API    http://localhost:3001/api/health
+                   #   store  http://localhost:3000 (redirects to /en)
+                   #   admin  http://localhost:3002
 ```
+
+To run one on its own: `npm run dev:api`, `npm run dev:web` or `npm run dev:admin`.
 
 Docker Desktop must be running for `db:up`. The container uses port 5433 so it doesn't
 clash with a locally installed Postgres; set `POSTGRES_PORT` to change it.

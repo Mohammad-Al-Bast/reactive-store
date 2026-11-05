@@ -4,6 +4,8 @@ const apiUrl = process.env.API_INTERNAL_URL ?? "http://localhost:3001";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Don't write AGENTS.md when `next dev` runs under an AI coding agent.
+  agentRules: false,
   turbopack: {
     rules: {
       "*.css": {
