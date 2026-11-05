@@ -113,8 +113,20 @@ export type AdminEnquiry = {
 
 export const adminEnquiryUpdateSchema = z.object({ handled: z.boolean() });
 
+/** One day on the dashboard chart, as a calendar date in Lebanon. */
+export type AdminDailyPoint = {
+  /** "2026-11-05" */
+  date: string;
+  /** Orders placed that day, cancelled ones included. */
+  orders: number;
+  /** Priced subtotal of that day's orders that weren't cancelled, in USD. */
+  sales: number;
+};
+
 export type AdminDashboard = {
   orders: { new: number; confirmed: number; outForDelivery: number; today: number; last7Days: number };
+  /** The last 90 days, oldest first, today included. */
+  daily: AdminDailyPoint[];
   enquiries: { unhandled: number };
   /** Staff alerts that gave up; worth a look. */
   failedAlerts: number;

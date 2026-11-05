@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* The panel has no dark mode: `dark:` classes in shadcn components only apply under a .dark class, never from the OS setting. */
+@custom-variant dark (&:is(.dark *));
+
 /*
  * Reactive Store brand tokens (shadcn/ui variable names, so `npx shadcn add`
  * components pick up the brand automatically).
@@ -40,6 +43,20 @@
   --warning: #8a4b12;
   --warning-soft: #fff7e8;
   --text-body: #3b3f46;
+
+  /* Sidebar (shadcn dashboard shell): ink, with gold for the current page. */
+  --sidebar: var(--ink);
+  --sidebar-foreground: var(--ink-text);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: var(--ink-raised);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--ink-line);
+  --sidebar-ring: var(--gold);
+
+  /* Charts */
+  --chart-1: var(--gold);
+  --chart-2: var(--brand);
 }
 
 @theme inline {
@@ -82,6 +99,16 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
 }
 
 @layer base {

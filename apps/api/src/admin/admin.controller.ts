@@ -16,6 +16,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AdminOrdersService } from './admin-orders.service.js';
+import { buildDailySeries } from './daily-series.js';
 import { orderListInclude, toEnquiry, toOrderListItem } from './admin.mappers.js';
 
 /** Midnight today in the store's time zone, whatever time zone the server runs in. */
@@ -43,7 +44,9 @@ export class AdminController {
     const weekAgo = new Date(Date.now() - 7 * 86_400_000);
     const count = (where: Parameters<PrismaService['order']['count']>[0]) => this.prisma.order.count(where);
 
-    const [fresh, confirmed, outForDelivery, today, last7Days, unhandled, failedAlerts, recent, open] =
+    const days = 90;
+    const since = new Date(startOfToday.getTime() - (days + 1) * 86_400_000);
+    const [fresh, confirmed, outForDelivery, today, last7Days, unhandled, failedAlerts, recent, open, history] =
       await Promise.all([
         count({ where: { status: 'new' } }),
         count({ where: { status: 'confirmed' } }),
@@ -54,10 +57,18 @@ export class AdminController {
         this.prisma.notification.count({ where: { status: 'failed' } }),
         this.prisma.order.findMany({ include: orderListInclude, orderBy: { createdAt: 'desc' }, take: 8 }),
         this.prisma.enquiry.findMany({ where: { handledAt: null }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        this.prisma.order.findMany({
+          where: { createdAt: { gte: since } },
+          select: { createdAt: true, subtotal: true, status: true },
+        }),
       ]);
 
     return {
       orders: { new: fresh, confirmed, outForDelivery, today, last7Days },
+      daily: buildDailySeries(
+        history.map((o) => ({ createdAt: o.createdAt, subtotal: o.subtotal.toNumber(), status: o.status })),
+        { days, timeZone: 'Asia/Beirut' },
+      ),
       enquiries: { unhandled },
       failedAlerts,
       recentOrders: recent.map(toOrderListItem),
