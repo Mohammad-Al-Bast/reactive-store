@@ -170,7 +170,7 @@ Store details in `src/lib/site.ts` stay in code for this version. They rarely ch
 - **Right-to-left:** switch to logical Tailwind classes (`ms-`, `ps-`, `text-start`) and mirror directional icons. Add a self-hosted Arabic font, matching how `layout.tsx` handles fonts today.
 - **Locale-aware details:** `formatPrice` takes the locale, and the language switcher stays on the same page. Orders record the customer's language, and WhatsApp messages to the store stay in English.
 
-**Progress (2026-11-05):** first pass done, not yet committed.
+**Progress (2026-11-05):** first pass done, in two commits (shared error codes and English order lines, then the bilingual store).
 - **Arabic tone:** written in Lebanese dialect (e.g. «ضيف عالسلّة», «شو بدّك؟», «منتّصل فيك») rather than formal Arabic; brand and device names (TENS, Whish / OMT) stay in English.
 - **Strings:** all store text is in `apps/web/messages/{en,ar}.json`, including store wording that was in `site.ts` (address, hours, delivery and payment text); `site.ts` now keeps only facts (phone, email, links, numbers). Message keys are typed, and `ar.json` missing a key fails type-checking.
 - **Validation:** the public order and enquiry schemas in `packages/shared` return codes (`name_required`, `phone_invalid`, …), which the store translates under `Errors`.
