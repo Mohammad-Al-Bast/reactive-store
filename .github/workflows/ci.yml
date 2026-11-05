@@ -10,6 +10,22 @@ jobs:
   check:
     name: Lint, type-check, test & build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: reactive
+          POSTGRES_PASSWORD: reactive
+          POSTGRES_DB: reactive_store
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reactive -d reactive_store"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://reactive:reactive@localhost:5432/reactive_store?schema=public
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -21,4 +37,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
+      - run: npm run db:deploy -w @reactive-store/api
+      - run: npm run db:seed
+      - run: npm run test:e2e -w @reactive-store/api
       - run: npm run build
