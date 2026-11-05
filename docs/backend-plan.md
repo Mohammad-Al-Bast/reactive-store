@@ -17,14 +17,16 @@ The goal is a real store: orders saved in a database, an admin panel to run the 
 | Repository | **Monorepo** (2026-11-05) with npm workspaces: `apps/web`, `apps/api`, `packages/shared`. Each app has its own Docker image and deploys on its own. |
 | ORM | **Prisma** (2026-11-05) on PostgreSQL 17 |
 | Admin auth | **JWT** (2026-11-05) in httpOnly cookies, with a short access token and rotating refresh tokens stored in the database |
-| Hosting | One VPS running `web`, `api`, `postgres` and `caddy` with Docker Compose |
+| Hosting | One VPS running `web`, `admin`, `api`, `postgres` and `caddy` with Docker Compose |
+| Admin site | **Separate app on its own subdomain** (2026-11-05): `apps/admin` at `admin.yourstore.com`, moved out of `apps/web`. The store and the panel deploy independently, admin cookies never reach the store's domain, and the API accepts admin requests only from `ADMIN_ORIGIN`. |
 
 Decisions can change as we go. When one does, update this table with the date, then fix the phases below.
 
 ### Repository layout
 ```
 apps/
-  web/        Next.js 16 store and admin UI (the current app, moved with git history)
+  web/        Next.js 16 store (the current app, moved with git history)
+  admin/      Next.js 16 admin panel, served at admin.yourstore.com
   api/        NestJS API
     prisma/   schema, migrations, seed
 packages/
@@ -42,13 +44,28 @@ Turborepo (or Nx) can be added later for cached builds if CI gets slow. It's not
   - **Rate limits:** `@nestjs/throttler`
   - **Email:** Nodemailer over SMTP, so the provider can be swapped
   - **Images:** `sharp` converts uploads to WebP
-- **Proxy (`caddy`):** automatic HTTPS. `/api/*` goes to Nest, `/uploads/*` is served from disk, and everything else goes to Next. Everything is one origin, so cookies work without CORS.
+- **Proxy (`caddy`):** automatic HTTPS for two hosts. On each, `/api/*` goes to Nest and `/uploads/*` is served from disk. Everything else goes to the store (`yourstore.com`) or the admin app (`admin.yourstore.com`). Each site calls the API on its own origin, so cookies work without CORS and admin cookies stay on the admin host. `yourstore.com/admin` can redirect to the admin host.
+
+  ```
+  yourstore.com {
+    handle /api/*     { reverse_proxy api:3001 }
+    handle /uploads/* { root * /srv; file_server }
+    handle /internal/* { respond 404 }
+    redir /admin* https://admin.yourstore.com
+    handle { reverse_proxy web:3000 }
+  }
+  admin.yourstore.com {
+    handle /api/*     { reverse_proxy api:3001 }
+    handle /uploads/* { root * /srv; file_server }
+    handle { reverse_proxy admin:3002 }
+  }
+  ```
 - **Tests:** Vitest everywhere (NestJS 12's default), supertest for API end-to-end, Playwright for the browser. The API lints with oxlint (also Nest 12's default), web keeps ESLint.
 
 Stock stays as the existing three statuses (in stock, low stock, to order). There is no quantity counting, so nothing can go wrong with automatic deductions, and it can be added later.
 
 ### How web and API talk
-- **Browser to API:** same-origin `fetch('/api/...')` through Caddy. Used for the cart, checkout, enquiries and admin actions.
+- **Browser to API:** same-origin `fetch('/api/...')` through Caddy, on whichever site the page is on. The store uses it for the cart, checkout and enquiries; the admin site for sign-in and admin actions.
 - **Next.js server to API:** an internal URL (`API_INTERNAL_URL=http://api:3001`) over the Docker network, wrapped in `'use cache'` and `cacheTag`.
 - **API to Next.js (cache updates):** after an admin saves, Nest calls `POST http://web:3000/internal/revalidate` with a shared secret, and that route calls `revalidateTag` with immediate expiry. Caddy blocks `/internal/*` from the public.
 
@@ -129,7 +146,7 @@ The store wanted a phone alert for each new order. We chose a **Telegram bot** f
 - The first admin is created by a CLI seed command. There is no public sign-up.
 - Mutating requests are protected from CSRF by `SameSite` cookies plus an `Origin` header check.
 
-**Admin UI (in `apps/web`):** a separate root layout at `app/(admin)/admin/...`, English only, `noindex`, built from the existing shadcn/ui components. `proxy.ts` redirects to `/admin/login` when the cookie is missing. That's only for user experience: **the API guard is the real check.** Admin pages are dynamic, and when they fetch on the server they forward the cookie to the API.
+**Admin UI (`apps/admin`, its own site since 2026-11-05):** English only, `noindex` (header, metadata and `robots.txt`), built from the same shadcn/ui components. `proxy.ts` redirects to `/login` when the cookie is missing. That's only for user experience: **the API guard is the real check.** Admin pages are dynamic, and when they fetch on the server they forward the cookie to the API.
 - **Dashboard:** new orders and enquiries to follow up
 - **Orders:** list, filter and search; change status (new → confirmed → out for delivery → delivered, or cancelled); payment status; internal notes; history of changes
 - **Products and categories:** create, edit and publish in both languages, with stock status, price and related products. A warning shows if a required translation is missing or text contains `[...]`.
@@ -168,12 +185,14 @@ Most page titles exist already, but there is no `metadataBase`, sitemap, robots 
 ## Phase 6: Production launch
 - **Server:** Ubuntu VPS with at least 4 GB RAM, because builds are memory-hungry. Firewall allows only SSH and web traffic, SSH keys only, automatic security updates.
 - **Compose services:**
-  - `web`: Next.js with `output: "standalone"`
+  - `web`: the store, Next.js with `output: "standalone"`
+  - `admin`: the admin panel, same as `web`, built with `NEXT_PUBLIC_STORE_URL`
   - `api`: NestJS
   - `postgres`: not public
   - `caddy`: automatic HTTPS and routing
   - Only Caddy publishes ports.
-- **Deploy script:** `prisma migrate deploy`, then build and restart the API, then build and restart web, with the previous images kept for rollback
+- **Deploy script:** `prisma migrate deploy`, then build and restart the API, then build and restart web and admin, with the previous images kept for rollback
+- **Production env for the separate admin site:** `WEB_ORIGIN=https://yourstore.com`, `ADMIN_ORIGIN=https://admin.yourstore.com`, `ADMIN_URL=https://admin.yourstore.com`, `COOKIE_SECURE=true`
 - **Backups:** nightly encrypted `pg_dump` and uploads copied **off the server**, with a restore tested before launch. Orders contain customer names, phones and addresses, so this isn't optional.
 - **Monitoring:** uptime checks for web and the API health endpoint (`/api/health`), plus a disk-space alert
 - **Pages:** privacy policy and terms, since the site now stores personal data
@@ -182,7 +201,7 @@ Most page titles exist already, but there is no `metadataBase`, sitemap, robots 
 
 ## What the owner needs to provide
 These don't block building, but they do block launch or limit SEO:
-1. **VPS and domain:** the domain sets all canonical URLs and the sitemap
+1. **VPS and domain:** the domain sets all canonical URLs and the sitemap. Point both `yourstore.com` and `admin.yourstore.com` at the server.
 2. **Product details:** real values for the placeholders. Those products stay as drafts until then.
 3. **Product photos:** only 2 of 14 products have one, which hurts both sales and search
 4. **Arabic review:** I can draft the translation, but a fluent reader should check it, and someone qualified should check the **medical safety text** in particular
@@ -194,7 +213,7 @@ These don't block building, but they do block launch or limit SEO:
    - [ ] Run `npm run telegram:setup -w @reactive-store/api` to list the chat ids that messaged the bot.
    - [ ] Put the ids you want into `TELEGRAM_CHAT_IDS` (comma-separated), then send a test: `npm run telegram:setup -w @reactive-store/api -- <id>`.
    - [ ] Restart the API and check its log says `telegram alerts on, to N recipient(s)`. Place a test order and check that the alert arrives.
-   - [ ] Once the site has a domain, set `ADMIN_URL` (e.g. `https://yourstore.com/admin`) so alerts link to the order.
+   - [ ] Once the site has a domain, set `ADMIN_URL` (e.g. `https://admin.yourstore.com`) so alerts link to the order.
    - [ ] On the server, put the same `TELEGRAM_*` values in the production env.
 
 ## Verification

@@ -27,6 +27,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://reactive:reactive@localhost:5432/reactive_store?schema=public
       WEB_ORIGIN: http://localhost:3000
+      ADMIN_ORIGIN: http://localhost:3002
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -51,3 +52,4 @@ jobs:
       - run: npm run build -w @reactive-store/web
         env:
           API_INTERNAL_URL: http://localhost:3001
+      - run: npm run build -w @reactive-store/admin

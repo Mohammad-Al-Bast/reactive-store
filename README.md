@@ -7,7 +7,8 @@ A monorepo with npm workspaces. The backend is being built in phases; see
 
 | Workspace | What |
 | --- | --- |
-| `apps/web` | Store and admin panel. Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · lucide icons |
+| `apps/web` | The store. Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · lucide icons |
+| `apps/admin` | The admin panel, a separate site for `admin.yourstore.com`. Same stack as the store. |
 | `apps/api` | REST API under `/api`. NestJS 12 · Prisma 7 · PostgreSQL 17 |
 | `packages/shared` | Zod schemas, enums and types used by both apps |
 
@@ -29,7 +30,8 @@ npm run db:migrate # create the tables
 npm run db:seed    # import the starting catalogue (safe to re-run)
 
 npm run dev:api    # API at http://localhost:3001/api/health
-npm run dev        # web at http://localhost:3000 (redirects to /en)
+npm run dev        # store at http://localhost:3000 (redirects to /en)
+npm run dev:admin  # admin panel at http://localhost:3002
 ```
 
 Docker Desktop must be running for `db:up`. The container uses port 5433 so it doesn't
@@ -48,7 +50,7 @@ npm run build                              # needs the API on :3001
 | What | File |
 | --- | --- |
 | Phone, WhatsApp number, address, hours, delivery, warranty, payment methods | `apps/web/src/lib/site.ts` |
-| Products, departments, prices, stock, photos | The admin panel at `/admin` (Products, Departments). Changes are live on the store within seconds. |
+| Products, departments, prices, stock, photos | The admin panel (Products, Departments). Changes are live on the store within seconds. |
 | Product photos | Upload them on the product's page in the admin panel. They are converted to WebP and stored in `UPLOAD_DIR`. |
 | Logo / favicon | `apps/web/public/images/logo.png`, `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png` |
 | Brand colours and fonts | `apps/web/src/app/globals.css` |
@@ -82,8 +84,11 @@ without one, such as `/shop`, redirect to `/en/shop`.
 | `/en/about` | About us |
 | `/en/contact` | Contact, opening hours and delivery / payment / warranty FAQ |
 
-The admin panel is at `/admin` (English only, never indexed): dashboard, orders, enquiries,
-products and departments. See "Admin accounts" below to create a login.
+The admin panel is its own site (`apps/admin`, http://localhost:3002 locally,
+`admin.yourstore.com` in production). It is English only and never indexed: dashboard,
+orders, enquiries, products and departments. See "Admin accounts" below to create a login.
+Its sign-in cookies belong to the admin site only, and the API accepts sign-in and admin
+requests only from `ADMIN_ORIGIN`, so the store can't act on an admin's behalf.
 
 For admin edits to show on the store at once, set the same random `REVALIDATE_SECRET` in
 `apps/api/.env` and `apps/web/.env.local`. Without it, the store picks up changes within an hour.
