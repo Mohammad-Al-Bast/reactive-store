@@ -10,7 +10,7 @@ function NativeSelect({ className, children, ...props }: React.ComponentProps<"s
       <select
         data-slot="native-select"
         className={cn(
-          "h-11 w-full appearance-none rounded-md border border-input bg-card pl-3 pr-9 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 md:text-sm",
+          "h-11 w-full appearance-none rounded-md border border-input bg-card ps-3 pe-9 text-base outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 md:text-sm",
           className,
         )}
         {...props}
@@ -19,7 +19,7 @@ function NativeSelect({ className, children, ...props }: React.ComponentProps<"s
       </select>
       <ChevronDown
         aria-hidden="true"
-        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
       />
     </div>
   );

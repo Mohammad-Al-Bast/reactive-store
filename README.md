@@ -74,7 +74,7 @@ product while it still has bracketed text.
 
 ## Pages
 
-Every store page lives under a locale prefix (`/en` today, `/ar` from Phase 4). Paths
+Every store page lives under a locale prefix (`/en` for English, `/ar` for Arabic, right-to-left). Customer-facing text lives in `apps/web/messages/en.json` and `ar.json`; the Arabic is written in Lebanese dialect, and type-checking fails if `ar.json` is missing a key. Paths
 without one, such as `/shop`, redirect to `/en/shop`.
 
 | Route | Page |

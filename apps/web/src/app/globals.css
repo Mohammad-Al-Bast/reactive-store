@@ -75,8 +75,9 @@
   --color-warning-soft: var(--warning-soft);
   --color-body: var(--text-body);
 
-  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), Georgia, serif;
+  /* The Latin fonts have no Arabic letters, so Arabic text falls through to the Noto fonts. */
+  --font-sans: var(--font-public-sans), var(--font-noto-sans-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), var(--font-noto-naskh-arabic), Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -124,4 +125,22 @@
   font-weight: 500;
   line-height: 1.06;
   letter-spacing: -0.015em;
+}
+
+/*
+ * Arabic. Letter-spacing breaks the joins between Arabic letters, and the
+ * headline line-heights are tuned for Latin capitals, so both are relaxed here.
+ * These rules sit outside any layer, so they win over utility classes.
+ */
+html[lang="ar"] * {
+  letter-spacing: normal !important;
+}
+html[lang="ar"] .eyebrow {
+  font-size: 0.9375rem;
+}
+html[lang="ar"] .display {
+  line-height: 1.35;
+}
+html[lang="ar"] body {
+  line-height: 1.75;
 }

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ export function ProductImage({
   sizes?: string;
   priority?: boolean;
 }) {
+  const t = useTranslations("Common");
   return (
     <div className={cn("relative flex items-center justify-center bg-muted", className)}>
       {product.image ? (
@@ -32,7 +34,7 @@ export function ProductImage({
       ) : (
         <div className="m-4 flex size-[calc(100%-2rem)] flex-col items-center justify-center gap-2 rounded-lg border-[1.5px] border-dashed border-[#cdbf9f] text-center text-xs text-muted-foreground">
           <ImageIcon aria-hidden="true" className="size-6 text-brand" />
-          Photo coming soon
+          {t("photoComingSoon")}
         </div>
       )}
     </div>

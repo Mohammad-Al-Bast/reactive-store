@@ -1,10 +1,14 @@
 import Image from "next/image";
+import { useTranslations } from "next-intl";
+
 import { Link } from "@/i18n/navigation";
 
 import type { Category } from "@/lib/products";
 import { site, telHref } from "@/lib/site";
 
 export function SiteFooter({ categories }: { categories: Category[] }) {
+  const t = useTranslations("Footer");
+  const tSite = useTranslations("Site");
   const year = 2026;
   return (
     <footer className="bg-ink text-sm text-ink-text">
@@ -14,11 +18,11 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
             <Image src="/images/logo.png" alt="" width={48} height={48} className="size-12 rounded-full" />
             <span className="font-serif text-[22px] text-white">{site.name}</span>
           </div>
-          <p className="max-w-72">{site.slogan}</p>
+          <p className="max-w-72">{tSite("slogan")}</p>
         </div>
 
         <div className="flex flex-col gap-2.5">
-          <h2 className="mb-1 font-semibold text-white">Shop</h2>
+          <h2 className="mb-1 font-semibold text-white">{t("shop")}</h2>
           {categories.map((c) => (
             <Link key={c.slug} href={`/shop/${c.slug}`} className="hover:text-gold">
               {c.name}
@@ -27,38 +31,36 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
         </div>
 
         <div className="flex flex-col gap-2.5">
-          <h2 className="mb-1 font-semibold text-white">Company</h2>
+          <h2 className="mb-1 font-semibold text-white">{t("company")}</h2>
           <Link href="/about" className="hover:text-gold">
-            About us
+            {t("about")}
           </Link>
           <Link href="/contact#faq" className="hover:text-gold">
-            Warranty &amp; returns
+            {t("warranty")}
           </Link>
           <Link href="/contact#faq" className="hover:text-gold">
-            Delivery
+            {t("delivery")}
           </Link>
           <Link href="/contact" className="hover:text-gold">
-            Contact
+            {t("contact")}
           </Link>
         </div>
 
         <div className="flex flex-col gap-2.5">
-          <h2 className="mb-1 font-semibold text-white">Visit or call</h2>
-          {site.address ? (
-            <a href={site.mapUrl} target="_blank" rel="noreferrer" className="hover:text-gold">
-              {site.address}
-            </a>
-          ) : null}
+          <h2 className="mb-1 font-semibold text-white">{t("visit")}</h2>
+          <a href={site.mapUrl} target="_blank" rel="noreferrer" className="hover:text-gold">
+            {tSite("address")}
+          </a>
           <a href={`mailto:${site.email}`} className="break-all hover:text-gold">
             {site.email}
           </a>
           {site.hours.map((h) => (
-            <span key={h.days}>
-              {h.days}: {h.time}
+            <span key={h}>
+              {tSite(`hours.${h}.days`)}: <bdi dir="ltr">{tSite(`hours.${h}.time`)}</bdi>
             </span>
           ))}
           <a href={telHref} className="font-semibold text-white hover:text-gold">
-            {site.phoneDisplay}
+            <bdi dir="ltr">{site.phoneDisplay}</bdi>
           </a>
           {site.social.instagram ? (
             <a href={site.social.instagram} className="hover:text-gold" target="_blank" rel="noreferrer">
@@ -73,13 +75,8 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
         </div>
       </div>
       <div className="container-page flex flex-wrap justify-between gap-x-8 gap-y-3 border-t border-ink-line py-6 text-[13px] text-[#a9a397]">
-        <span>
-          © {year} {site.name}, Lebanon. All rights reserved.
-        </span>
-        <span className="max-w-160">
-          Therapy and medical devices should be used as directed by a qualified healthcare professional.
-          Specifications are provided by manufacturers.
-        </span>
+        <span>{t("rights", { year, store: site.name })}</span>
+        <span className="max-w-160">{t("disclaimer")}</span>
       </div>
     </footer>
   );

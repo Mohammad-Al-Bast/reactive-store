@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, Minus, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useCart } from "@/components/cart-provider";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,13 @@ function useAddedFlash() {
 /** Compact button used on product cards. */
 export function AddToCartButton({ slug, name, className }: { slug: string; name: string; className?: string }) {
   const { add } = useCart();
+  const t = useTranslations("Cart");
   const [added, flash] = useAddedFlash();
   return (
     <Button
       type="button"
       className={className}
-      aria-label={`Add ${name} to cart`}
+      aria-label={t("addLabel", { name })}
       onClick={() => {
         add(slug);
         flash();
@@ -33,10 +35,10 @@ export function AddToCartButton({ slug, name, className }: { slug: string; name:
     >
       {added ? (
         <>
-          <Check /> Added
+          <Check /> {t("added")}
         </>
       ) : (
-        "Add to cart"
+        t("add")
       )}
     </Button>
   );
@@ -45,19 +47,20 @@ export function AddToCartButton({ slug, name, className }: { slug: string; name:
 /** Quantity stepper + add button used on the product page. */
 export function AddToCartWithQty({ slug, name }: { slug: string; name: string }) {
   const { add } = useCart();
+  const t = useTranslations("Cart");
   const [qty, setQty] = React.useState(1);
   const [added, flash] = useAddedFlash();
   return (
     <div className="flex flex-wrap gap-3">
       <div
         role="group"
-        aria-label="Quantity"
+        aria-label={t("quantity")}
         className="flex h-13 items-center rounded-md border border-input bg-card"
       >
         <button
           type="button"
-          aria-label="Decrease quantity"
-          className="flex h-full w-12 items-center justify-center rounded-l-md hover:bg-muted disabled:opacity-40"
+          aria-label={t("decrease")}
+          className="flex h-full w-12 items-center justify-center rounded-s-md hover:bg-muted disabled:opacity-40"
           disabled={qty <= 1}
           onClick={() => setQty((q) => Math.max(1, q - 1))}
         >
@@ -68,8 +71,8 @@ export function AddToCartWithQty({ slug, name }: { slug: string; name: string })
         </output>
         <button
           type="button"
-          aria-label="Increase quantity"
-          className="flex h-full w-12 items-center justify-center rounded-r-md hover:bg-muted"
+          aria-label={t("increase")}
+          className="flex h-full w-12 items-center justify-center rounded-e-md hover:bg-muted"
           onClick={() => setQty((q) => q + 1)}
         >
           <Plus className="size-4" />
@@ -79,7 +82,7 @@ export function AddToCartWithQty({ slug, name }: { slug: string; name: string })
         type="button"
         size="lg"
         className={cn("flex-1 basis-48")}
-        aria-label={`Add ${qty} ${name} to cart`}
+        aria-label={t("addQtyLabel", { qty, name })}
         onClick={() => {
           add(slug, qty);
           flash();
@@ -87,10 +90,10 @@ export function AddToCartWithQty({ slug, name }: { slug: string; name: string })
       >
         {added ? (
           <>
-            <Check /> Added to cart
+            <Check /> {t("addedToCart")}
           </>
         ) : (
-          "Add to cart"
+          t("add")
         )}
       </Button>
     </div>

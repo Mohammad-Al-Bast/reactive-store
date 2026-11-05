@@ -1,10 +1,13 @@
-import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense } from "react";
+
+import { Link } from "@/i18n/navigation";
 
 import { ProductBrowser, ProductGridFallback } from "@/components/product-browser";
 import { Button } from "@/components/ui/button";
 import type { Category, Product } from "@/lib/products";
 import { whatsappHref } from "@/lib/site";
+import { adviceMessage } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 
 export function ShopLayout({
@@ -20,19 +23,21 @@ export function ShopLayout({
   categories: Category[];
   active?: string;
 }) {
+  const t = useTranslations("Shop");
+  const tc = useTranslations("Common");
   return (
     <>
       <section className="border-b border-border bg-card">
         <div className="container-page pt-7 pb-9">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+          <nav aria-label={tc("breadcrumb")} className="flex flex-wrap gap-2 text-sm text-muted-foreground">
             <Link href="/" className="hover:text-foreground">
-              Home
+              {tc("home")}
             </Link>
             <span aria-hidden="true">/</span>
             {active ? (
               <>
                 <Link href="/shop" className="hover:text-foreground">
-                  Shop
+                  {tc("shop")}
                 </Link>
                 <span aria-hidden="true">/</span>
                 <span className="text-foreground" aria-current="page">
@@ -41,13 +46,13 @@ export function ShopLayout({
               </>
             ) : (
               <span className="text-foreground" aria-current="page">
-                Shop
+                {tc("shop")}
               </span>
             )}
           </nav>
           <h1 className="display mt-4.5 mb-3 text-[clamp(2.1rem,4vw,3.25rem)]">{title}</h1>
           <p className="max-w-2xl text-[17px] text-body">{description}</p>
-          <nav aria-label="Departments" className="mt-6 flex flex-wrap gap-2">
+          <nav aria-label={t("departments")} className="mt-6 flex flex-wrap gap-2">
             <Link
               href="/shop"
               className={cn(
@@ -56,7 +61,7 @@ export function ShopLayout({
               )}
               aria-current={!active ? "page" : undefined}
             >
-              All
+              {t("all")}
             </Link>
             {categories.map((c) => (
               <Link
@@ -87,15 +92,15 @@ export function ShopLayout({
         <div className="flex flex-wrap items-center justify-between gap-x-12 gap-y-6 rounded-2xl bg-ink p-[clamp(1.75rem,4vw,3rem)] text-[#f3efe6]">
           <div className="min-w-0 flex-[1_1_480px]">
             <h2 className="mb-2 font-serif text-[clamp(1.6rem,3vw,2.25rem)] font-medium leading-tight text-white">
-              Not sure which product is right for you?
+              {t("helpTitle")}
             </h2>
             <p className="text-ink-text">
-              Tell us whether it is for a clinic, your studies or home use, and we will point you to the right model.
+              {t("helpText")}
             </p>
           </div>
           <Button asChild variant="accent" size="lg">
-            <a href={whatsappHref("Hello Reactive Store, I'd like advice choosing a product.")} target="_blank" rel="noreferrer">
-              Ask us on WhatsApp
+            <a href={whatsappHref(adviceMessage)} target="_blank" rel="noreferrer">
+              {t("helpCta")}
             </a>
           </Button>
         </div>

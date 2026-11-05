@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import * as React from "react";
-import { Menu, Phone, Search, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
+import { Languages, Menu, Phone, Search, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useCart } from "@/components/cart-provider";
 import { Button } from "@/components/ui/button";
@@ -12,15 +13,37 @@ import { site, telHref } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { href: "/shop", label: "Shop", match: (p: string) => p.startsWith("/shop") || p.startsWith("/product") },
-  { href: "/#who", label: "Professionals", match: () => false },
-  { href: "/#who", label: "Students", match: () => false },
-  { href: "/about", label: "About us", match: (p: string) => p === "/about" },
-  { href: "/contact", label: "Contact", match: (p: string) => p === "/contact" },
-];
+  { href: "/shop", key: "shop", match: (p: string) => p.startsWith("/shop") || p.startsWith("/product") },
+  { href: "/#who", key: "professionals", match: () => false },
+  { href: "/#who", key: "students", match: () => false },
+  { href: "/about", key: "about", match: (p: string) => p === "/about" },
+  { href: "/contact", key: "contact", match: (p: string) => p === "/contact" },
+] as const;
+
+/** Links to the same page in the other language. Search terms are dropped. */
+function LanguageSwitch({ className }: { className?: string }) {
+  const t = useTranslations("Header");
+  const locale = useLocale();
+  const pathname = usePathname();
+  const other = locale === "ar" ? "en" : "ar";
+  return (
+    <Link
+      href={pathname}
+      locale={other}
+      hrefLang={other}
+      lang={other}
+      aria-label={t("switchLanguageLabel")}
+      className={cn("inline-flex items-center gap-1.5 font-semibold hover:text-gold", className)}
+    >
+      <Languages aria-hidden="true" className="size-3.5" />
+      {t("switchLanguage")}
+    </Link>
+  );
+}
 
 function SearchForm({ className, onDone }: { className?: string; onDone?: () => void }) {
   const router = useRouter();
+  const t = useTranslations("Header");
   const id = React.useId();
   return (
     <form
@@ -38,13 +61,13 @@ function SearchForm({ className, onDone }: { className?: string; onDone?: () => 
     >
       <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
       <label htmlFor={id} className="sr-only">
-        Search products
+        {t("searchLabel")}
       </label>
       <input
         id={id}
         name="q"
         type="search"
-        placeholder="Search TENS, cupping, tables…"
+        placeholder={t("searchPlaceholder")}
         className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
     </form>
@@ -53,11 +76,12 @@ function SearchForm({ className, onDone }: { className?: string; onDone?: () => 
 
 function CartLink() {
   const { count } = useCart();
+  const t = useTranslations("Header");
   return (
     <Button asChild>
-      <Link href="/cart" aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`}>
+      <Link href="/cart" aria-label={t("cartLabel", { count })}>
         <ShoppingCart />
-        <span className="hidden sm:inline">Cart</span>
+        <span className="hidden sm:inline">{t("cart")}</span>
         <span className="tabular-nums">{count}</span>
       </Link>
     </Button>
@@ -66,6 +90,8 @@ function CartLink() {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const t = useTranslations("Header");
+  const tSite = useTranslations("Site");
   const [menuOpen, setMenuOpen] = React.useState(false);
 
   return (
@@ -75,19 +101,22 @@ export function SiteHeader() {
           <div className="hidden flex-wrap gap-x-6 gap-y-1 sm:flex">
             <span className="inline-flex items-center gap-2">
               <ShieldCheck aria-hidden="true" className="size-4 text-gold" />
-              {site.yearsInField} years in healthcare &amp; rehabilitation
+              {t("yearsInField", { years: site.yearsInField })}
             </span>
-            {site.delivery ? (
-              <span className="inline-flex items-center gap-2">
-                <Truck aria-hidden="true" className="size-4 text-gold" />
-                {site.delivery}
-              </span>
-            ) : null}
+            <span className="inline-flex items-center gap-2">
+              <Truck aria-hidden="true" className="size-4 text-gold" />
+              {tSite("delivery")}
+            </span>
           </div>
-          <a href={telHref} className="inline-flex items-center gap-2 hover:text-gold">
-            <Phone aria-hidden="true" className="size-3.5" />
-            Call / WhatsApp {site.phoneDisplay}
-          </a>
+          <div className="flex items-center gap-x-5">
+            <a href={telHref} className="inline-flex items-center gap-2 hover:text-gold">
+              <Phone aria-hidden="true" className="size-3.5" />
+              <span>
+                {t("callWhatsApp")} <bdi dir="ltr">{site.phoneDisplay}</bdi>
+              </span>
+            </a>
+            <LanguageSwitch />
+          </div>
         </div>
       </div>
 
@@ -98,17 +127,17 @@ export function SiteHeader() {
             <span className="flex flex-col leading-tight">
               <span className="font-serif text-xl font-semibold sm:text-[23px]">{site.name}</span>
               <span className="hidden text-[11px] uppercase tracking-[0.12em] text-muted-foreground sm:block">
-                {site.tagline}
+                {tSite("tagline")}
               </span>
             </span>
           </Link>
 
-          <nav aria-label="Main" className="hidden items-center gap-6 text-[15px] font-medium lg:flex">
+          <nav aria-label={t("nav.main")} className="hidden items-center gap-6 text-[15px] font-medium lg:flex">
             {nav.map((item) => {
               const active = item.match(pathname);
               return (
                 <Link
-                  key={item.label}
+                  key={item.key}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
@@ -116,41 +145,42 @@ export function SiteHeader() {
                     active ? "border-brand text-brand" : "border-transparent",
                   )}
                 >
-                  {item.label}
+                  {t(`nav.${item.key}`)}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2.5">
+          <div className="ms-auto flex min-w-0 flex-1 items-center justify-end gap-2.5">
             <SearchForm className="hidden w-full max-w-80 md:flex" />
             <CartLink />
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="secondary" size="icon" className="lg:hidden" aria-label="Open menu">
+                <Button variant="secondary" size="icon" className="lg:hidden" aria-label={t("openMenu")}>
                   <Menu />
                 </Button>
               </SheetTrigger>
-              <SheetContent className="px-6 pt-16">
+              <SheetContent side="end" closeLabel={t("close")} className="px-6 pt-16">
                 <SheetTitle>{site.name}</SheetTitle>
-                <SheetDescription className="sr-only">Main menu</SheetDescription>
+                <SheetDescription className="sr-only">{t("mainMenu")}</SheetDescription>
                 <SearchForm onDone={() => setMenuOpen(false)} />
-                <nav aria-label="Mobile" className="flex flex-col">
+                <nav aria-label={t("nav.mobile")} className="flex flex-col">
                   {nav.map((item) => (
-                    <SheetClose asChild key={item.label}>
+                    <SheetClose asChild key={item.key}>
                       <Link
                         href={item.href}
                         className="border-b border-border py-3.5 text-lg font-medium hover:text-brand"
                       >
-                        {item.label}
+                        {t(`nav.${item.key}`)}
                       </Link>
                     </SheetClose>
                   ))}
                 </nav>
                 <a href={telHref} className="mt-2 inline-flex items-center gap-2 font-semibold">
                   <Phone aria-hidden="true" className="size-4" />
-                  {site.phoneDisplay}
+                  <bdi dir="ltr">{site.phoneDisplay}</bdi>
                 </a>
+                <LanguageSwitch className="mt-2 text-base hover:text-brand" />
               </SheetContent>
             </Sheet>
           </div>

@@ -23,12 +23,16 @@ export async function postJson<T>(path: string, body: unknown): Promise<ApiResul
   }
 }
 
-/** Maps API validation issues (e.g. `customer.phone`) to form field names (`phone`). */
-export function fieldErrors(issues: ValidationIssue[] | undefined) {
+/**
+ * Maps validation issues (e.g. `customer.phone` / `phone_invalid`) to translated
+ * messages keyed by form field name (`phone`). `translate` gets the error code and
+ * returns the customer's text; unknown codes should come back as a generic message.
+ */
+export function fieldErrors(issues: ValidationIssue[] | undefined, translate: (code: string) => string) {
   const errors: Record<string, string> = {};
   for (const { path, message } of issues ?? []) {
     const field = path.split(".").pop();
-    if (field && !errors[field]) errors[field] = message;
+    if (field && !errors[field]) errors[field] = translate(message);
   }
   return errors;
 }

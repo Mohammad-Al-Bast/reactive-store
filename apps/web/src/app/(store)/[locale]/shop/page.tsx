@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { ShopLayout } from "@/components/shop-layout";
 import { pageLocale } from "@/i18n/locale";
 import { getCategories, getProducts } from "@/lib/catalog";
 
-export const metadata: Metadata = {
-  title: "Shop all products",
-  description: "Physiotherapy, massage, cupping, therapy supplies and daily-living aids.",
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/shop">): Promise<Metadata> {
+  const locale = await pageLocale(params);
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return { title: t("shopTitle"), description: t("shopDescription") };
+}
 
 export default async function ShopPage({ params }: PageProps<"/[locale]/shop">) {
   const locale = await pageLocale(params);
-  const [categories, products] = await Promise.all([getCategories(locale), getProducts(locale)]);
+  const [categories, products, t] = await Promise.all([
+    getCategories(locale),
+    getProducts(locale),
+    getTranslations({ locale, namespace: "Shop" }),
+  ]);
   return (
     <ShopLayout
-      title="All products"
-      description="Physiotherapy and rehabilitation equipment, massage and recovery tools, cupping supplies, therapy consumables and daily-living aids."
+      title={t("allTitle")}
+      description={t("allDescription")}
       products={products}
       categories={categories}
     />

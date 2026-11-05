@@ -170,6 +170,16 @@ Store details in `src/lib/site.ts` stay in code for this version. They rarely ch
 - **Right-to-left:** switch to logical Tailwind classes (`ms-`, `ps-`, `text-start`) and mirror directional icons. Add a self-hosted Arabic font, matching how `layout.tsx` handles fonts today.
 - **Locale-aware details:** `formatPrice` takes the locale, and the language switcher stays on the same page. Orders record the customer's language, and WhatsApp messages to the store stay in English.
 
+**Progress (2026-11-05):** first pass done, not yet committed.
+- **Arabic tone:** written in Lebanese dialect (e.g. «ضيف عالسلّة», «شو بدّك؟», «منتّصل فيك») rather than formal Arabic; brand and device names (TENS, Whish / OMT) stay in English.
+- **Strings:** all store text is in `apps/web/messages/{en,ar}.json`, including store wording that was in `site.ts` (address, hours, delivery and payment text); `site.ts` now keeps only facts (phone, email, links, numbers). Message keys are typed, and `ar.json` missing a key fails type-checking.
+- **Validation:** the public order and enquiry schemas in `packages/shared` return codes (`name_required`, `phone_invalid`, …), which the store translates under `Errors`.
+- **Prices:** USD with Western digits ("$70") in both languages, as Lebanese shops write them; only "price on request" is translated. `formatPrice` takes that label rather than the locale.
+- **RTL:** `<html dir>` follows the locale; logical classes (`ms-`, `ps-`, `start-`, `text-start`), forward arrows mirrored, the menu sheet opens from the end side. Phone and order numbers are isolated as left-to-right. Arabic fonts: Noto Naskh Arabic (headings) and Noto Sans Arabic (text), self-hosted, loaded only for Arabic text.
+- **English for staff:** order lines are saved with English product names, and WhatsApp messages (order, enquiry, product question) are English whatever the customer's language. Orders and enquiries still record the customer's locale.
+- **Language switcher** in the top bar and mobile menu, staying on the same page (search terms are dropped).
+- Still open: Arabic catalogue content (department and product translations are entered in the admin panel; until then they fall back to English), a native-speaker review of the copy, and a check on a phone.
+
 ## Phase 5: SEO
 Most page titles exist already, but there is no `metadataBase`, sitemap, robots file, canonical URL, social sharing data or structured data.
 - **Metadata:** `metadataBase`, canonical URLs, `hreflang` for en/ar/x-default, and Open Graph and Twitter data, all translated. Product pages use their photo, with a branded default image otherwise.

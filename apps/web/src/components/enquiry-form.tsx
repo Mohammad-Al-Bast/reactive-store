@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, MessageCircle } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   createEnquirySchema,
   enquiryRoles,
@@ -18,9 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { useErrorText } from "@/i18n/errors";
 import { fieldErrors, postJson } from "@/lib/api-client";
-import { site, whatsappHref } from "@/lib/site";
-import { buildEnquiryMessage, roleLabels, topicLabels, type EnquiryDetails } from "@/lib/whatsapp";
+import { ltr, whatsappHref } from "@/lib/site";
+import { buildEnquiryMessage, type EnquiryDetails } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 
 type Errors = Partial<Record<"name" | "phone" | "message", string>>;
@@ -31,8 +32,8 @@ type Errors = Partial<Record<"name" | "phone" | "message", string>>;
 export function EnquiryForm({
   withTopic = false,
   title,
-  submitLabel = "Send message",
-  messagePlaceholder = "e.g. a TENS unit for home use, or a table and cupping set for a new practice",
+  submitLabel,
+  messagePlaceholder,
   className,
 }: {
   withTopic?: boolean;
@@ -42,6 +43,10 @@ export function EnquiryForm({
   className?: string;
 }) {
   const locale = useLocale();
+  const t = useTranslations("Enquiry");
+  const tc = useTranslations("Common");
+  const tSite = useTranslations("Site");
+  const errorText = useErrorText();
   const [errors, setErrors] = React.useState<Errors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -68,13 +73,18 @@ export function EnquiryForm({
     };
     const enquiry: CreateEnquiryInput = {
       ...details,
-      locale: locale as CreateEnquiryInput["locale"],
+      locale,
       [HONEYPOT_FIELD]: String(f.get(HONEYPOT_FIELD) ?? "") || undefined,
     };
 
     const check = createEnquirySchema.safeParse(enquiry);
     if (!check.success) {
-      setErrors(fieldErrors(check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))));
+      setErrors(
+        fieldErrors(
+          check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+          errorText,
+        ),
+      );
       return;
     }
     setErrors({});
@@ -84,9 +94,9 @@ export function EnquiryForm({
     setSubmitting(false);
 
     if (res.ok) setSent(details);
-    else if (res.status === 400) setErrors(fieldErrors(res.body.issues));
-    else if (res.status === 429) setFormError("Too many messages. Please wait a few minutes, or message us on WhatsApp.");
-    else setFormError("We couldn't send your message. Try again, or message us on WhatsApp.");
+    else if (res.status === 400) setErrors(fieldErrors(res.body.issues, errorText));
+    else if (res.status === 429) setFormError(t("tooMany"));
+    else setFormError(t("failed"));
   }
 
   const clear = (key: keyof Errors) => () => errors[key] && setErrors((e) => ({ ...e, [key]: undefined }));
@@ -100,19 +110,18 @@ export function EnquiryForm({
         <span className="flex size-12 items-center justify-center rounded-full bg-[#e6f0e9]">
           <Check aria-hidden="true" className="size-6 text-success" strokeWidth={2.2} />
         </span>
-        <h2 className="display text-3xl">Thank you, {sent.name.split(" ")[0]}.</h2>
+        <h2 className="display text-3xl">{t("thanksTitle", { name: sent.name.split(" ")[0] })}</h2>
         <p className="text-body">
-          We have your message and will reply to {sent.phone} within {site.replyTime}. For a faster answer, you can also
-          send it to us on WhatsApp.
+          {t("thanksText", { phone: ltr(sent.phone), replyTime: tSite("replyTime") })}
         </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
             <a href={whatsappHref(buildEnquiryMessage(sent))} target="_blank" rel="noreferrer">
-              <MessageCircle /> Send on WhatsApp
+              <MessageCircle /> {tc("sendOnWhatsApp")}
             </a>
           </Button>
           <Button type="button" size="lg" variant="outline" onClick={() => setSent(null)}>
-            Send another message
+            {t("another")}
           </Button>
         </div>
       </div>
@@ -127,21 +136,23 @@ export function EnquiryForm({
     >
       {title ? <h2 className="display text-3xl sm:col-span-2">{title}</h2> : null}
       {/* Honeypot: hidden from people, so only bots fill it in. */}
-      <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
-        <label htmlFor={ids.hp}>Leave this empty</label>
+      <div aria-hidden="true" className="absolute -start-[9999px] size-px overflow-hidden">
+        <label htmlFor={ids.hp}>{tc("leaveEmpty")}</label>
         <input id={ids.hp} name={HONEYPOT_FIELD} type="text" tabIndex={-1} autoComplete="off" />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor={ids.name}>Full name</Label>
+        <Label htmlFor={ids.name}>{tc("fullName")}</Label>
         <Input id={ids.name} name="name" autoComplete="name" aria-invalid={!!errors.name} onChange={clear("name")} />
         {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor={ids.phone}>Phone / WhatsApp</Label>
+        <Label htmlFor={ids.phone}>{tc("phone")}</Label>
         <Input
           id={ids.phone}
           name="phone"
           type="tel"
+          dir="ltr"
+          className="text-start rtl:text-end"
           autoComplete="tel"
           placeholder="+961"
           aria-invalid={!!errors.phone}
@@ -150,34 +161,34 @@ export function EnquiryForm({
         {errors.phone ? <p className="text-sm text-destructive">{errors.phone}</p> : null}
       </div>
       <div className={cn("grid gap-2", !withTopic && "sm:col-span-2")}>
-        <Label htmlFor={ids.role}>I am a…</Label>
+        <Label htmlFor={ids.role}>{t("role")}</Label>
         <NativeSelect id={ids.role} name="role">
           {enquiryRoles.map((r) => (
             <option key={r} value={r}>
-              {roleLabels[r]}
+              {t(`roles.${r}`)}
             </option>
           ))}
         </NativeSelect>
       </div>
       {withTopic ? (
         <div className="grid gap-2">
-          <Label htmlFor={ids.topic}>Topic</Label>
+          <Label htmlFor={ids.topic}>{t("topic")}</Label>
           <NativeSelect id={ids.topic} name="topic">
-            {enquiryTopics.map((t) => (
-              <option key={t} value={t}>
-                {topicLabels[t]}
+            {enquiryTopics.map((topic) => (
+              <option key={topic} value={topic}>
+                {t(`topics.${topic}`)}
               </option>
             ))}
           </NativeSelect>
         </div>
       ) : null}
       <div className="grid gap-2 sm:col-span-2">
-        <Label htmlFor={ids.msg}>What do you need?</Label>
+        <Label htmlFor={ids.msg}>{t("message")}</Label>
         <Textarea
           id={ids.msg}
           name="message"
           rows={4}
-          placeholder={messagePlaceholder}
+          placeholder={messagePlaceholder ?? t("placeholder")}
           aria-invalid={!!errors.message}
           onChange={clear("message")}
         />
@@ -190,10 +201,10 @@ export function EnquiryForm({
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4 sm:col-span-2">
         <span className="text-[13px] text-muted-foreground">
-          We only use your details to reply to you.
+          {t("privacy")}
         </span>
         <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting}>
-          {submitting ? "Sending…" : submitLabel}
+          {submitting ? t("sending") : (submitLabel ?? t("submit"))}
         </Button>
       </div>
     </form>

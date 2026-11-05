@@ -1,36 +1,21 @@
-import { formatUsd, governorates } from "@reactive-store/shared";
+import { formatUsd, governorates, paymentMethodSchema } from "@reactive-store/shared";
 
 /**
- * Store-wide settings. Everything a customer reads about delivery, payment,
- * warranty and how to reach you lives here — edit this one file.
- *
- * Values still in [brackets] are facts only the store owner can confirm.
- * Replace them, or set them to "" to hide that line on the site.
+ * Store-wide facts: contact details, numbers and links. Customer-facing wording
+ * (tagline, address, opening hours, delivery and payment text) is translated, so
+ * it lives in messages/en.json and messages/ar.json under "Site".
  */
 export const site = {
   name: "Reactive Store",
-  tagline: "Medical, Rehabilitation & Healthcare",
-  slogan: "Quality Equipment. Safer Care. Better Lives.",
   yearsInField: 5,
 
   phoneDisplay: "81 164 065",
   /** International format, digits only — used for tel: and WhatsApp links. */
   phoneIntl: "96181164065",
   email: "reactive.medicalservices.lb@gmail.com",
-  address: "Shtoura, Sultan Center, Third Floor",
   mapUrl: "https://maps.app.goo.gl/Rcuwrb2Fpk81uRn88",
-  hours: [
-    { days: "Mon – Fri", time: "8:00 – 18:00" },
-    { days: "Saturday", time: "8:00 – 14:00" },
-    { days: "Sunday", time: "Closed" },
-  ],
-  replyTime: "one working day (24h)",
-
-  delivery: "Delivery across Lebanon",
-  deliveryTime: "3–5 days, all Lebanon",
-  deliveryFee: "Confirmed on WhatsApp",
-  /** Warranty differs per product, so it is confirmed per item rather than promised site-wide. */
-  warranty: "Confirmed per item",
+  /** Keys under "Site.hours" in the message files, in display order. */
+  hours: ["weekdays", "saturday", "sunday"],
   customersServed: "2,500+",
 
   social: {
@@ -38,15 +23,11 @@ export const site = {
     facebook: "",
   },
 
-  paymentMethods: [
-    { id: "cod", name: "Cash on delivery", description: "Pay when it arrives" },
-    { id: "wallet", name: "Whish / OMT", description: "Transfer before dispatch" },
-  ],
+  /** Names and descriptions are under "Site.payment" in the message files. */
+  paymentMethods: paymentMethodSchema.options,
 
   /** Shared with the API, which validates checkout against the same list. */
   governorates,
-
-  currency: "USD",
 } as const;
 
 export const telHref = `tel:+${site.phoneIntl}`;
@@ -56,7 +37,20 @@ export function whatsappHref(message?: string) {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-export function formatPrice(price: number | null | undefined) {
-  if (price == null) return "Price on request";
-  return formatUsd(price);
+/**
+ * A price as the store shows it. Prices are USD with Western digits ("$70") in
+ * both languages, as Lebanese shops write them; only the "on request" text is
+ * translated, so pass `t("Common.priceOnRequest")`.
+ */
+export function formatPrice(price: number | null | undefined, onRequest: string) {
+  return price == null ? onRequest : formatUsd(price);
+}
+
+/**
+ * Keeps a left-to-right run (a phone number, an order number, "2,500+") in its
+ * own order inside Arabic text, using Unicode isolates. Use it for values passed
+ * into translated messages; in JSX, `<bdi dir="ltr">` does the same.
+ */
+export function ltr(text: string) {
+  return `\u2066${text}\u2069`;
 }

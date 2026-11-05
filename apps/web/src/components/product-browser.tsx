@@ -3,13 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import { SlidersHorizontal, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { audienceLabel, type Audience, type Product } from "@/lib/products";
+import { audiences as audienceIds, type Audience, type Product } from "@/lib/products";
 
 type Sort = "popular" | "price-asc" | "price-desc" | "name";
 
@@ -20,6 +21,9 @@ function toggle<T>(list: T[], value: T) {
 /** Product grid with type / audience / stock filters, search and sort — all client-side. */
 export function ProductBrowser({ products }: { products: Product[] }) {
   const params = useSearchParams();
+  const t = useTranslations("Shop");
+  const tAudience = useTranslations("Audience");
+  const locale = useLocale();
   const query = (params.get("q") ?? "").trim().toLowerCase();
 
   const types = React.useMemo(() => Array.from(new Set(products.map((p) => p.type))), [products]);
@@ -40,10 +44,10 @@ export function ProductBrowser({ products }: { products: Product[] }) {
     const price = (p: Product) => p.price ?? Number.POSITIVE_INFINITY;
     if (sort === "price-asc") list.sort((a, b) => price(a) - price(b));
     if (sort === "price-desc") list.sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
-    if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, locale));
     if (sort === "popular") list.sort((a, b) => Number(!!b.bestSeller) - Number(!!a.bestSeller));
     return list;
-  }, [products, query, selectedTypes, audiences, inStockOnly, sort]);
+  }, [products, query, selectedTypes, audiences, inStockOnly, sort, locale]);
 
   const activeCount = selectedTypes.length + audiences.length + (inStockOnly ? 1 : 0);
   const reset = () => {
@@ -55,21 +59,21 @@ export function ProductBrowser({ products }: { products: Product[] }) {
   return (
     <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
       <aside
-        aria-label="Filters"
+        aria-label={t("filters")}
         className={`${showFilters ? "flex" : "hidden"} w-full shrink-0 flex-col gap-6 rounded-xl border border-border bg-card p-6 lg:flex lg:w-64`}
       >
         <div className="flex items-center justify-between">
-          <span className="font-bold">Filters</span>
+          <span className="font-bold">{t("filters")}</span>
           {activeCount ? (
             <button type="button" onClick={reset} className="text-sm font-semibold text-brand hover:underline">
-              Clear
+              {t("clear")}
             </button>
           ) : null}
         </div>
 
         {types.length > 1 ? (
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-3 text-sm font-semibold">Product type</legend>
+            <legend className="mb-3 text-sm font-semibold">{t("productType")}</legend>
             {types.map((t) => {
               const id = `type-${t}`;
               return (
@@ -81,7 +85,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
                   />
                   <Label htmlFor={id} className="flex-1 text-[15px] font-normal">
                     {t}
-                    <span className="ml-auto text-muted-foreground">{products.filter((p) => p.type === t).length}</span>
+                    <span className="ms-auto text-muted-foreground">{products.filter((p) => p.type === t).length}</span>
                   </Label>
                 </div>
               );
@@ -90,14 +94,14 @@ export function ProductBrowser({ products }: { products: Product[] }) {
         ) : null}
 
         <fieldset className="flex flex-col gap-3 border-t border-[#efebe2] pt-5">
-          <legend className="float-left mb-3 w-full pt-5 text-sm font-semibold">Best for</legend>
-          {(Object.keys(audienceLabel) as Audience[]).map((a) => {
+          <legend className="float-start mb-3 w-full pt-5 text-sm font-semibold">{t("bestFor")}</legend>
+          {audienceIds.map((a) => {
             const id = `aud-${a}`;
             return (
               <div key={a} className="flex items-center gap-2.5">
                 <Checkbox id={id} checked={audiences.includes(a)} onCheckedChange={() => setAudiences((s) => toggle(s, a))} />
                 <Label htmlFor={id} className="text-[15px] font-normal">
-                  {audienceLabel[a]}
+                  {tAudience(a)}
                 </Label>
               </div>
             );
@@ -107,7 +111,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
         <div className="flex items-center gap-2.5 border-t border-[#efebe2] pt-5">
           <Checkbox id="in-stock" checked={inStockOnly} onCheckedChange={(v) => setInStockOnly(v === true)} />
           <Label htmlFor="in-stock" className="text-[15px] font-normal">
-            In stock only
+            {t("inStockOnly")}
           </Label>
         </div>
       </aside>
@@ -116,25 +120,24 @@ export function ProductBrowser({ products }: { products: Product[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" className="lg:hidden" onClick={() => setShowFilters((s) => !s)} aria-expanded={showFilters}>
-              <SlidersHorizontal /> Filters{activeCount ? ` (${activeCount})` : ""}
+              <SlidersHorizontal /> {activeCount ? t("filtersCount", { count: activeCount }) : t("filters")}
             </Button>
             <p className="text-[15px] text-muted-foreground" aria-live="polite">
-              Showing <strong className="text-foreground">{visible.length}</strong> of {products.length} products
-              {query ? (
-                <>
-                  {" "}
-                  for “<strong className="text-foreground">{params.get("q")}</strong>”
-                </>
-              ) : null}
+              {t.rich(query ? "showingFor" : "showing", {
+                visible: visible.length,
+                total: products.length,
+                query: params.get("q") ?? "",
+                strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2.5">
-            <Label htmlFor="sort">Sort by</Label>
+            <Label htmlFor="sort">{t("sortBy")}</Label>
             <NativeSelect id="sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="w-48">
-              <option value="popular">Most popular</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-              <option value="name">Name A–Z</option>
+              <option value="popular">{t("sort.popular")}</option>
+              <option value="price-asc">{t("sort.priceAsc")}</option>
+              <option value="price-desc">{t("sort.priceDesc")}</option>
+              <option value="name">{t("sort.name")}</option>
             </NativeSelect>
           </div>
         </div>
@@ -147,11 +150,11 @@ export function ProductBrowser({ products }: { products: Product[] }) {
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-input bg-card p-8">
-            <p className="font-semibold">No products match these filters.</p>
-            <p className="text-muted-foreground">Try removing a filter, or ask us — we may be able to source it.</p>
+            <p className="font-semibold">{t("noMatch")}</p>
+            <p className="text-muted-foreground">{t("noMatchText")}</p>
             {activeCount ? (
               <Button variant="secondary" onClick={reset}>
-                <X /> Clear filters
+                <X /> {t("clearFilters")}
               </Button>
             ) : null}
           </div>

@@ -1,52 +1,44 @@
 import type { Metadata } from "next";
 import { ExternalLink, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
 import { EnquiryForm } from "@/components/enquiry-form";
 import { pageLocale } from "@/i18n/locale";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { site, telHref, whatsappHref } from "@/lib/site";
+import { ltr, site, telHref, whatsappHref } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: `Call or WhatsApp ${site.name} on ${site.phoneDisplay} for product advice, quotes and orders.`,
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/contact">): Promise<Metadata> {
+  const locale = await pageLocale(params);
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return {
+    title: t("contactTitle"),
+    description: t("contactDescription", { store: site.name, phone: ltr(site.phoneDisplay) }),
+  };
+}
 
-const faq = [
-  {
-    q: "Where do you deliver, and how long does it take?",
-    a: "We deliver across Lebanon. Delivery time depends on your location, generally 3–5 days.",
-  },
-  { q: "How can I pay?", a: "Cash on delivery, or by Whish / OMT transfer before dispatch." },
-  {
-    q: "Do devices come with a warranty?",
-    a: `Warranty availability, duration and coverage vary by product. Please contact ${site.name} before purchasing to confirm whether your item includes a warranty and to learn its terms and conditions.`,
-  },
-  {
-    q: "Can I return a product?",
-    a: "Returns may be accepted for incorrect or faulty items after review. For hygiene reasons, opened or used single-use and personal-care products cannot be returned unless faulty or supplied incorrectly.",
-  },
-  { q: "Do you offer prices for clinics or bulk orders?", a: "Yes. Send us your list and we prepare one combined quote." },
-  { q: "Do you offer anything for students?", a: "Yes, we have offers for students and for group orders. Ask us for details." },
-];
+/** Keys under "Contact.faq" in the message files. */
+const faq = ["delivery", "payment", "warranty", "returns", "bulk", "students"] as const;
 
 export default async function ContactPage({ params }: PageProps<"/[locale]/contact">) {
-  await pageLocale(params);
+  const locale = await pageLocale(params);
+  const [t, tSite] = await Promise.all([
+    getTranslations({ locale, namespace: "Contact" }),
+    getTranslations({ locale, namespace: "Site" }),
+  ]);
+  const phone = ltr(site.phoneDisplay);
   const cards = [
-    { icon: MessageCircle, title: "WhatsApp", text: `${site.phoneDisplay} · fastest reply`, href: whatsappHref(), dark: true },
-    { icon: Phone, title: "Call us", text: site.phoneDisplay, href: telHref },
-    { icon: Mail, title: "Email", text: site.email, href: site.email.includes("@") ? `mailto:${site.email}` : undefined },
-    { icon: MapPin, title: "Visit", text: site.address, href: site.mapUrl },
+    { icon: MessageCircle, title: t("whatsapp"), text: t("whatsappText", { phone }), href: whatsappHref(), dark: true },
+    { icon: Phone, title: t("call"), text: phone, href: telHref },
+    { icon: Mail, title: t("email"), text: site.email, href: site.email.includes("@") ? `mailto:${site.email}` : undefined },
+    { icon: MapPin, title: t("visit"), text: tSite("address"), href: site.mapUrl },
   ];
 
   return (
     <>
       <section className="container-page pt-18 pb-10">
-        <h1 className="display mb-3.5 text-[clamp(2.5rem,5vw,3.75rem)] leading-[1.05]">Talk to a real person.</h1>
-        <p className="mb-10 max-w-xl text-lg text-body">
-          Questions about a product, an order, or what you need for your practice or studies? We usually reply within{" "}
-          {site.replyTime}.
-        </p>
+        <h1 className="display mb-3.5 text-[clamp(2.5rem,5vw,3.75rem)] leading-[1.05]">{t("title")}</h1>
+        <p className="mb-10 max-w-xl text-lg text-body">{t("intro", { replyTime: tSite("replyTime") })}</p>
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map(({ icon: Icon, title, text, href, dark }) => {
             const inner = (
@@ -73,27 +65,29 @@ export default async function ContactPage({ params }: PageProps<"/[locale]/conta
       </section>
 
       <section className="container-page grid gap-8 pt-6 pb-18 lg:grid-cols-[1.4fr_1fr]">
-        <EnquiryForm withTopic title="Send us a message" messagePlaceholder="How can we help?" />
+        <EnquiryForm withTopic title={t("formTitle")} messagePlaceholder={t("formPlaceholder")} />
         <div className="flex flex-col gap-4">
           <div className="flex flex-1 flex-col justify-between gap-6 rounded-2xl bg-ink p-7 text-white">
             <div className="flex flex-col gap-3">
               <MapPin aria-hidden="true" className="size-8 text-gold" strokeWidth={1.6} />
-              <h2 className="font-serif text-[26px] font-medium leading-tight">Visit our store</h2>
-              <p className="text-ink-text">{site.address}</p>
+              <h2 className="font-serif text-[26px] font-medium leading-tight">{t("visitTitle")}</h2>
+              <p className="text-ink-text">{tSite("address")}</p>
             </div>
             <Button asChild variant="accent" size="lg" className="w-fit">
               <a href={site.mapUrl} target="_blank" rel="noreferrer">
-                Open in Google Maps <ExternalLink />
+                {t("openMaps")} <ExternalLink />
               </a>
             </Button>
           </div>
           <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="mb-3 text-[17px] font-bold">Opening hours</h2>
+            <h2 className="mb-3 text-[17px] font-bold">{t("hoursTitle")}</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[15px]">
               {site.hours.map((h) => (
-                <div key={h.days} className="contents">
-                  <dt className="text-muted-foreground">{h.days}</dt>
-                  <dd>{h.time}</dd>
+                <div key={h} className="contents">
+                  <dt className="text-muted-foreground">{tSite(`hours.${h}.days`)}</dt>
+                  <dd>
+                    <bdi dir="ltr">{tSite(`hours.${h}.time`)}</bdi>
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -103,12 +97,12 @@ export default async function ContactPage({ params }: PageProps<"/[locale]/conta
 
       <section id="faq" className="scroll-mt-4 border-t border-border bg-card">
         <div className="container-page max-w-4xl py-20">
-          <h2 className="display mb-7 text-[clamp(2rem,3.6vw,2.75rem)]">Delivery, payment &amp; warranty</h2>
+          <h2 className="display mb-7 text-[clamp(2rem,3.6vw,2.75rem)]">{t("faqTitle")}</h2>
           <Accordion type="single" collapsible className="flex flex-col gap-2.5">
-            {faq.map((f, i) => (
-              <AccordionItem key={f.q} value={`f${i}`} className="bg-background">
-                <AccordionTrigger>{f.q}</AccordionTrigger>
-                <AccordionContent>{f.a}</AccordionContent>
+            {faq.map((f) => (
+              <AccordionItem key={f} value={f} className="bg-background">
+                <AccordionTrigger>{t(`faq.${f}.q`)}</AccordionTrigger>
+                <AccordionContent>{t(`faq.${f}.a`, { store: site.name })}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>

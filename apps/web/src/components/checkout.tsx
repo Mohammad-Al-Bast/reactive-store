@@ -19,20 +19,27 @@ import {
   type OrderSummary,
   type PaymentMethod,
 } from "@reactive-store/shared";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
+import { useErrorText } from "@/i18n/errors";
 import { fieldErrors, postJson } from "@/lib/api-client";
-import { formatPrice, site, telHref, whatsappHref } from "@/lib/site";
+import { formatPrice, ltr, site, telHref, whatsappHref } from "@/lib/site";
 import { buildOrderMessage } from "@/lib/whatsapp";
 
-type Field = "name" | "phone" | "city" | "address";
+type Field = "name" | "phone" | "city" | "address" | "notes";
 type Errors = Partial<Record<Field, string>>;
-const fields: Field[] = ["name", "phone", "city", "address"];
+const fields: Field[] = ["name", "phone", "city", "address", "notes"];
 
 export function Checkout() {
   const cart = useCart();
   const locale = useLocale();
-  const [payment, setPayment] = React.useState<PaymentMethod>(site.paymentMethods[0].id);
+  const t = useTranslations("Checkout");
+  const tc = useTranslations("Common");
+  const tSite = useTranslations("Site");
+  const errorText = useErrorText();
+  const price = (p: number | null | undefined) => formatPrice(p, tc("priceOnRequest"));
+  const phone = ltr(site.phoneDisplay);
+  const [payment, setPayment] = React.useState<PaymentMethod>(site.paymentMethods[0]);
   const [errors, setErrors] = React.useState<Errors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -50,7 +57,7 @@ export function Checkout() {
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? "").trim();
     const order: CreateOrderInput = {
-      locale: locale as CreateOrderInput["locale"],
+      locale,
       items: cart.lines.map((l) => ({ slug: l.slug, qty: l.qty })),
       customer: {
         name: get("name"),
@@ -67,7 +74,12 @@ export function Checkout() {
     // Same schema the API uses, so most mistakes are caught before the request.
     const check = createOrderSchema.safeParse(order);
     if (!check.success) {
-      showErrors(fieldErrors(check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))));
+      showErrors(
+        fieldErrors(
+          check.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+          errorText,
+        ),
+      );
       return;
     }
     setErrors({});
@@ -83,16 +95,14 @@ export function Checkout() {
       return;
     }
     if (res.status === 400) {
-      showErrors(fieldErrors(res.body.issues));
+      showErrors(fieldErrors(res.body.issues, errorText));
     } else if (res.status === 422) {
-      setFormError("Some items are no longer available and have been removed. Check your order and try again.");
+      setFormError(t("unavailable"));
       cart.refresh();
     } else if (res.status === 429) {
-      setFormError(`Too many attempts. Please wait a few minutes, or call us on ${site.phoneDisplay}.`);
+      setFormError(t("tooMany", { phone }));
     } else {
-      setFormError(
-        `We couldn't place your order. Check your connection and try again, or call us on ${site.phoneDisplay}.`,
-      );
+      setFormError(t("failed", { phone }));
     }
   }
 
@@ -104,22 +114,27 @@ export function Checkout() {
         <span className="flex size-18 items-center justify-center rounded-full bg-[#e6f0e9]">
           <Check aria-hidden="true" className="size-9 text-success" strokeWidth={2.2} />
         </span>
-        <h1 className="display text-[44px] leading-[1.1]">Thank you, we have your order.</h1>
+        <h1 className="display text-[44px] leading-[1.1]">{t("thanksTitle")}</h1>
         <p className="text-[17px] text-body" role="status">
-          Your order number is <strong>{placed.number}</strong>. We will call you to confirm the total, delivery time
-          and fees within {site.replyTime}.
+          {t.rich("thanksText", {
+            number: placed.number,
+            replyTime: tSite("replyTime"),
+            strong: (chunks) => (
+              <strong>
+                <bdi dir="ltr">{chunks}</bdi>
+              </strong>
+            ),
+          })}
         </p>
-        <p className="text-[15px] text-muted-foreground">
-          Want a faster reply? You can also send the order to us on WhatsApp. This is optional.
-        </p>
+        <p className="text-[15px] text-muted-foreground">{t("thanksWhatsApp")}</p>
         <div className="mt-2 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
             <a href={whatsappHref(buildOrderMessage(placed))} target="_blank" rel="noreferrer">
-              <MessageCircle /> Send on WhatsApp
+              <MessageCircle /> {tc("sendOnWhatsApp")}
             </a>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/">Back to home</Link>
+            <Link href="/">{t("backHome")}</Link>
           </Button>
         </div>
       </div>
@@ -129,14 +144,14 @@ export function Checkout() {
   if (cart.ready && cart.lines.length === 0) {
     return (
       <div className="container-page flex max-w-2xl flex-col items-start gap-4 py-24">
-        <h1 className="display text-[44px]">Your cart is empty</h1>
-        <p className="text-[17px] text-body">Browse the shop, or tell us what you need and we will source it.</p>
+        <h1 className="display text-[44px]">{t("emptyTitle")}</h1>
+        <p className="text-[17px] text-body">{t("emptyText")}</p>
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
-            <Link href="/shop">Continue shopping</Link>
+            <Link href="/shop">{t("continueShopping")}</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/contact">Ask us</Link>
+            <Link href="/contact">{t("askUs")}</Link>
           </Button>
         </div>
       </div>
@@ -145,31 +160,29 @@ export function Checkout() {
 
   return (
     <div className="container-page py-10 pb-22">
-      <h1 className="display mb-2 text-[clamp(2.1rem,4vw,3rem)]">Your order</h1>
-      <p className="mb-8 text-muted-foreground">
-        No account needed. We confirm your order with you by phone before delivery.
-      </p>
+      <h1 className="display mb-2 text-[clamp(2.1rem,4vw,3rem)]">{t("title")}</h1>
+      <p className="mb-8 text-muted-foreground">{t("intro")}</p>
 
       <form noValidate onSubmit={onSubmit} className="relative flex flex-col gap-8 lg:flex-row lg:items-start">
         {/* Honeypot: hidden from people, so only bots fill it in. */}
-        <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
-          <label htmlFor="co-website">Leave this empty</label>
+        <div aria-hidden="true" className="absolute -start-[9999px] size-px overflow-hidden">
+          <label htmlFor="co-website">{tc("leaveEmpty")}</label>
           <input id="co-website" name={HONEYPOT_FIELD} type="text" tabIndex={-1} autoComplete="off" />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <section aria-labelledby="h-items" className="rounded-2xl border border-border bg-card p-6">
             <h2 id="h-items" className="mb-2 text-lg font-bold">
-              1. Items
+              {t("items")}
             </h2>
             {cart.error ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 py-6">
-                <p className="text-destructive">We couldn&apos;t load your cart. Check your connection and try again.</p>
+                <p className="text-destructive">{t("loadError")}</p>
                 <Button type="button" variant="secondary" onClick={cart.retry}>
-                  Try again
+                  {t("tryAgain")}
                 </Button>
               </div>
             ) : !cart.ready ? (
-              <p className="py-6 text-muted-foreground">Loading your cart…</p>
+              <p className="py-6 text-muted-foreground">{t("loading")}</p>
             ) : null}
             <ul>
               {cart.lines.map(({ product, qty }) => (
@@ -179,12 +192,12 @@ export function Checkout() {
                     <Link href={`/product/${product.slug}`} className="font-semibold hover:text-brand">
                       {product.name}
                     </Link>
-                    <div className="text-sm text-muted-foreground">{formatPrice(product.price)}</div>
+                    <div className="text-sm text-muted-foreground">{price(product.price)}</div>
                   </div>
-                  <div role="group" aria-label={`Quantity for ${product.name}`} className="flex h-11 items-center rounded-md border border-input">
+                  <div role="group" aria-label={t("qtyFor", { name: product.name })} className="flex h-11 items-center rounded-md border border-input">
                     <button
                       type="button"
-                      aria-label="Decrease"
+                      aria-label={t("decrease")}
                       onClick={() => cart.setQty(product.slug, qty - 1)}
                       className="flex size-11 items-center justify-center hover:bg-muted"
                     >
@@ -193,19 +206,19 @@ export function Checkout() {
                     <output className="w-7 text-center font-semibold">{qty}</output>
                     <button
                       type="button"
-                      aria-label="Increase"
+                      aria-label={t("increase")}
                       onClick={() => cart.setQty(product.slug, qty + 1)}
                       className="flex size-11 items-center justify-center hover:bg-muted"
                     >
                       <Plus className="size-4" />
                     </button>
                   </div>
-                  <span className="w-28 text-right font-bold">
-                    {product.price == null ? <span className="text-sm text-muted-foreground">On request</span> : formatPrice(product.price * qty)}
+                  <span className="w-28 text-end font-bold">
+                    {product.price == null ? <span className="text-sm text-muted-foreground">{t("onRequest")}</span> : price(product.price * qty)}
                   </span>
                   <button
                     type="button"
-                    aria-label={`Remove ${product.name}`}
+                    aria-label={t("remove", { name: product.name })}
                     onClick={() => cart.remove(product.slug)}
                     className="flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-destructive"
                   >
@@ -218,39 +231,41 @@ export function Checkout() {
 
           <section aria-labelledby="h-delivery" className="grid gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-2">
             <h2 id="h-delivery" className="text-lg font-bold sm:col-span-2">
-              2. Delivery details
+              {t("delivery")}
             </h2>
             <div className="grid gap-2">
-              <Label htmlFor="co-name">Full name</Label>
+              <Label htmlFor="co-name">{tc("fullName")}</Label>
               <Input id="co-name" name="name" autoComplete="name" aria-invalid={!!errors.name} onChange={clear("name")} />
               {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="co-phone">Phone / WhatsApp</Label>
-              <Input id="co-phone" name="phone" type="tel" autoComplete="tel" placeholder="+961" aria-invalid={!!errors.phone} onChange={clear("phone")} />
+              <Label htmlFor="co-phone">{tc("phone")}</Label>
+              <Input id="co-phone" name="phone" type="tel" dir="ltr" autoComplete="tel" placeholder="+961" className="text-start rtl:text-end" aria-invalid={!!errors.phone} onChange={clear("phone")} />
               {errors.phone ? <p className="text-sm text-destructive">{errors.phone}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="co-governorate">Governorate</Label>
+              <Label htmlFor="co-governorate">{t("governorate")}</Label>
               <NativeSelect id="co-governorate" name="governorate">
                 {site.governorates.map((g) => (
-                  <option key={g}>{g}</option>
+                  <option key={g} value={g}>
+                    {tSite(`governorates.${g}`)}
+                  </option>
                 ))}
               </NativeSelect>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="co-city">City / area</Label>
+              <Label htmlFor="co-city">{t("city")}</Label>
               <Input id="co-city" name="city" autoComplete="address-level2" aria-invalid={!!errors.city} onChange={clear("city")} />
               {errors.city ? <p className="text-sm text-destructive">{errors.city}</p> : null}
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="co-address">Address and directions</Label>
+              <Label htmlFor="co-address">{t("address")}</Label>
               <Textarea
                 id="co-address"
                 name="address"
                 rows={3}
                 autoComplete="street-address"
-                placeholder="Building, floor, nearby landmark"
+                placeholder={t("addressPlaceholder")}
                 aria-invalid={!!errors.address}
                 onChange={clear("address")}
               />
@@ -258,45 +273,50 @@ export function Checkout() {
             </div>
             <div className="grid gap-2 sm:col-span-2">
               <Label htmlFor="co-notes">
-                Notes <span className="font-normal text-muted-foreground">(optional)</span>
+                {t("notes")} <span className="font-normal text-muted-foreground">{tc("optional")}</span>
               </Label>
-              <Input id="co-notes" name="notes" placeholder="Best time to call, clinic name for the invoice…" />
+              <Input
+                id="co-notes"
+                name="notes"
+                placeholder={t("notesPlaceholder")}
+                aria-invalid={!!errors.notes}
+                onChange={clear("notes")}
+              />
+              {errors.notes ? <p className="text-sm text-destructive">{errors.notes}</p> : null}
             </div>
           </section>
 
           <section aria-labelledby="h-pay" className="rounded-2xl border border-border bg-card p-6">
             <h2 id="h-pay" className="mb-4 text-lg font-bold">
-              3. Payment
+              {t("payment")}
             </h2>
             <RadioGroup aria-labelledby="h-pay" value={payment} onValueChange={(v) => setPayment(v as PaymentMethod)} className="sm:grid-cols-2">
               {site.paymentMethods.map((m) => (
-                <RadioCard key={m.id} value={m.id}>
-                  <span className="text-[15px] font-bold">{m.name}</span>
-                  <span className="text-[13px] text-muted-foreground">{m.description}</span>
+                <RadioCard key={m} value={m}>
+                  <span className="text-[15px] font-bold">{tSite(`payment.${m}.name`)}</span>
+                  <span className="text-[13px] text-muted-foreground">{tSite(`payment.${m}.description`)}</span>
                 </RadioCard>
               ))}
             </RadioGroup>
           </section>
         </div>
 
-        <aside aria-label="Order summary" className="flex w-full flex-col gap-3.5 rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-6 lg:w-90">
-          <h2 className="text-lg font-bold">Summary</h2>
-          <div className="flex justify-between text-[15px]">
-            <span className="text-muted-foreground">Items ({cart.count})</span>
-            <span>{cart.subtotal > 0 ? formatPrice(cart.subtotal) : "To be confirmed"}</span>
+        <aside aria-label={t("summaryLabel")} className="flex w-full flex-col gap-3.5 rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-6 lg:w-90">
+          <h2 className="text-lg font-bold">{t("summary")}</h2>
+          <div className="flex justify-between gap-4 text-[15px]">
+            <span className="text-muted-foreground">{t("itemsCount", { count: cart.count })}</span>
+            <span>{cart.subtotal > 0 ? price(cart.subtotal) : t("toBeConfirmed")}</span>
           </div>
-          <div className="flex justify-between text-[15px]">
-            <span className="text-muted-foreground">Delivery</span>
-            <span>{site.deliveryFee}</span>
+          <div className="flex justify-between gap-4 text-[15px]">
+            <span className="text-muted-foreground">{t("deliveryRow")}</span>
+            <span>{tSite("deliveryFee")}</span>
           </div>
-          <div className="flex justify-between border-t border-border pt-3.5 text-xl font-bold">
-            <span>Total</span>
-            <span>{cart.subtotal > 0 && !cart.hasUnpriced ? formatPrice(cart.subtotal) : "We confirm by phone"}</span>
+          <div className="flex justify-between gap-4 border-t border-border pt-3.5 text-xl font-bold">
+            <span>{t("total")}</span>
+            <span>{cart.subtotal > 0 && !cart.hasUnpriced ? price(cart.subtotal) : t("confirmByPhone")}</span>
           </div>
-          <p className="-mt-2 text-[13px] text-muted-foreground">Plus delivery, confirmed with you by phone.</p>
-          {cart.hasUnpriced ? (
-            <p className="text-[13px] text-muted-foreground">Some items are priced on request; we confirm the total before delivery.</p>
-          ) : null}
+          <p className="-mt-2 text-[13px] text-muted-foreground">{t("plusDelivery")}</p>
+          {cart.hasUnpriced ? <p className="text-[13px] text-muted-foreground">{t("someOnRequest")}</p> : null}
           {formError ? (
             <p role="alert" className="text-sm text-destructive">
               {formError}
@@ -309,15 +329,15 @@ export function Checkout() {
             disabled={!cart.ready || cart.lines.length === 0 || submitting}
             aria-busy={submitting}
           >
-            {submitting ? "Placing your order…" : "Place order"}
+            {submitting ? t("placing") : t("place")}
           </Button>
-          <p className="text-center text-[13px] text-muted-foreground">You pay nothing until we confirm your order by phone.</p>
+          <p className="text-center text-[13px] text-muted-foreground">{t("payNothing")}</p>
           <div className="flex flex-col gap-2.5 border-t border-[#efebe2] pt-3.5 text-sm">
             <span className="flex items-center gap-2.5">
-              <ShieldCheck aria-hidden="true" className="size-4.5 text-brand" /> Warranty terms confirmed per item
+              <ShieldCheck aria-hidden="true" className="size-4.5 text-brand" /> {t("warrantyNote")}
             </span>
             <a href={telHref} className="flex items-center gap-2.5 hover:text-brand">
-              <Phone aria-hidden="true" className="size-4.5 text-brand" /> Questions? {site.phoneDisplay}
+              <Phone aria-hidden="true" className="size-4.5 text-brand" /> {t("questions", { phone })}
             </a>
           </div>
         </aside>
