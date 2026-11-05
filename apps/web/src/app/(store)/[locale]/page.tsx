@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import {
   ArrowRight,
   Check,
@@ -18,7 +18,8 @@ import { CategoryIcon } from "@/components/category-icon";
 import { EnquiryForm } from "@/components/enquiry-form";
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
-import { categories, products } from "@/lib/products";
+import { pageLocale } from "@/i18n/locale";
+import { getCategories, getProducts } from "@/lib/catalog";
 import { site, telHref } from "@/lib/site";
 
 const standards = [
@@ -67,7 +68,9 @@ const steps = [
   { title: "Support after purchase", text: "Questions on use, warranty or restocks go to the same team." },
 ];
 
-export default function HomePage() {
+export default async function HomePage({ params }: PageProps<"/[locale]">) {
+  const locale = await pageLocale(params);
+  const [categories, products] = await Promise.all([getCategories(locale), getProducts(locale)]);
   const bestSellers = products.filter((p) => p.bestSeller).slice(0, 4);
   const tens = products.find((p) => p.slug === "4-in-1-tens-ems-unit");
   const table = products.find((p) => p.slug === "portable-treatment-table");

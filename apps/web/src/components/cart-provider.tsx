@@ -1,20 +1,29 @@
 "use client";
 
 import * as React from "react";
+import { useLocale } from "next-intl";
+import type { CartResolveResponse } from "@reactive-store/shared";
 
-import { getProduct, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
 export type CartLine = { slug: string; qty: number };
 type CartLineWithProduct = CartLine & { product: Product };
 
 type CartContextValue = {
   lines: CartLineWithProduct[];
+  /** Total quantity in the saved cart. Known as soon as the browser has read it. */
   count: number;
   /** Sum of known prices; lines with "price on request" are excluded. */
   subtotal: number;
   hasUnpriced: boolean;
-  /** False during the server render and hydration, before the saved cart is read. */
+  /**
+   * False during the server render and hydration, and while current product
+   * details are being fetched from the API.
+   */
   ready: boolean;
+  /** True when product details could not be loaded; call `retry`. */
+  error: boolean;
+  retry: () => void;
   add: (slug: string, qty?: number) => void;
   setQty: (slug: string, qty: number) => void;
   remove: (slug: string) => void;
@@ -24,15 +33,24 @@ type CartContextValue = {
 /* ---------- A tiny external store backed by localStorage ---------- */
 
 const STORAGE_KEY = "reactive-store-cart";
+const MAX_QTY = 99;
 const EMPTY: CartLine[] = [];
 const listeners = new Set<() => void>();
 let current: CartLine[] | null = null;
 
+function isLine(l: unknown): l is CartLine {
+  if (!l || typeof l !== "object") return false;
+  const { slug, qty } = l as Record<string, unknown>;
+  return typeof slug === "string" && slug.length > 0 && Number.isInteger(qty) && (qty as number) > 0;
+}
+
 function readStored(): CartLine[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as CartLine[]) : [];
-    return Array.isArray(parsed) ? parsed.filter((l) => getProduct(l.slug) && l.qty > 0) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(isLine).map((l) => ({ slug: l.slug, qty: Math.min(l.qty, MAX_QTY) }))
+      : [];
   } catch {
     return [];
   }
@@ -79,37 +97,95 @@ function subscribe(listener: () => void) {
 
 const noopSubscribe = () => () => {};
 
+/* ---------- Current product details from the API ---------- */
+
+async function resolveCart(locale: string, slugs: string[], signal: AbortSignal) {
+  const res = await fetch("/api/cart/resolve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    // Only product details are needed here, so quantities are not sent.
+    body: JSON.stringify({ locale, items: slugs.map((slug) => ({ slug, qty: 1 })) }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`Cart lookup failed (${res.status})`);
+  return (await res.json()) as CartResolveResponse;
+}
+
 /* ---------- React context ---------- */
 
 const CartContext = React.createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const locale = useLocale();
   const lines = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const ready = React.useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const hydrated = React.useSyncExternalStore(noopSubscribe, () => true, () => false);
+
+  // Product details keyed by `${locale}:${slug}`, filled in by the API.
+  const [products, setProducts] = React.useState<Record<string, Product>>({});
+  const [failedKey, setFailedKey] = React.useState<string | null>(null);
+  const [attempt, setAttempt] = React.useState(0);
+
+  const unresolved = lines.map((l) => l.slug).filter((slug) => !products[`${locale}:${slug}`]);
+  const unresolvedKey = unresolved.join(",");
+
+  React.useEffect(() => {
+    if (!hydrated || !unresolvedKey) return;
+    const controller = new AbortController();
+    resolveCart(locale, unresolvedKey.split(","), controller.signal)
+      .then(({ lines: found, missing }) => {
+        setProducts((prev) => {
+          const next = { ...prev };
+          for (const { product } of found) next[`${locale}:${product.slug}`] = product;
+          return next;
+        });
+        // Products that were removed or unpublished leave the cart.
+        if (missing.length) write(getSnapshot().filter((l) => !missing.includes(l.slug)));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFailedKey(unresolvedKey);
+      });
+    return () => controller.abort();
+  }, [hydrated, unresolvedKey, locale, attempt]);
+
+  const error = failedKey !== null && failedKey === unresolvedKey;
+  const ready = hydrated && unresolved.length === 0;
 
   const value = React.useMemo<CartContextValue>(() => {
     const withProduct = lines
-      .map((l) => ({ ...l, product: getProduct(l.slug) }))
+      .map((l) => ({ ...l, product: products[`${locale}:${l.slug}`] }))
       .filter((l): l is CartLineWithProduct => Boolean(l.product));
     return {
       lines: withProduct,
       ready,
-      count: withProduct.reduce((n, l) => n + l.qty, 0),
+      error,
+      retry: () => {
+        setFailedKey(null);
+        setAttempt((n) => n + 1);
+      },
+      count: lines.reduce((n, l) => n + l.qty, 0),
       subtotal: withProduct.reduce((s, l) => s + (l.product.price ?? 0) * l.qty, 0),
       hasUnpriced: withProduct.some((l) => l.product.price == null),
       add: (slug, qty = 1) => {
         const prev = getSnapshot();
         const found = prev.find((l) => l.slug === slug);
-        write(found ? prev.map((l) => (l.slug === slug ? { ...l, qty: l.qty + qty } : l)) : [...prev, { slug, qty }]);
+        write(
+          found
+            ? prev.map((l) => (l.slug === slug ? { ...l, qty: Math.min(l.qty + qty, MAX_QTY) } : l))
+            : [...prev, { slug, qty: Math.min(qty, MAX_QTY) }],
+        );
       },
       setQty: (slug, qty) => {
         const prev = getSnapshot();
-        write(qty <= 0 ? prev.filter((l) => l.slug !== slug) : prev.map((l) => (l.slug === slug ? { ...l, qty } : l)));
+        write(
+          qty <= 0
+            ? prev.filter((l) => l.slug !== slug)
+            : prev.map((l) => (l.slug === slug ? { ...l, qty: Math.min(qty, MAX_QTY) } : l)),
+        );
       },
       remove: (slug) => write(getSnapshot().filter((l) => l.slug !== slug)),
       clear: () => write([]),
     };
-  }, [lines, ready]);
+  }, [lines, products, locale, ready, error]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

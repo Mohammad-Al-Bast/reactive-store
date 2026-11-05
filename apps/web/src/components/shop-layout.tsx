@@ -1,9 +1,9 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { Suspense } from "react";
 
 import { ProductBrowser, ProductGridFallback } from "@/components/product-browser";
 import { Button } from "@/components/ui/button";
-import { categories, type CategorySlug, type Product } from "@/lib/products";
+import type { Category, Product } from "@/lib/products";
 import { whatsappHref } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -11,12 +11,14 @@ export function ShopLayout({
   title,
   description,
   products,
+  categories,
   active,
 }: {
   title: string;
   description: string;
   products: Product[];
-  active?: CategorySlug;
+  categories: Category[];
+  active?: string;
 }) {
   return (
     <>

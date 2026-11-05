@@ -87,6 +87,11 @@ Details that matter:
 
 **Deploy early:** put this phase on a staging subdomain on the VPS. This tests the riskiest constraint straight away: with `cacheComponents` on, `generateStaticParams` must return at least one param, so **the web build needs the API, and the API needs the database**. The deploy script brings up `postgres` and `api` first, then builds `web` with `API_INTERNAL_URL` pointing at the running API.
 
+**Progress (2026-11-05):** schema, migration, seed, catalogue API, web data layer, cart resolve and `[locale]` routing are done. Still to do: the staging deploy.
+- `next-intl` works with `cacheComponents`: the locale comes from route params via `setRequestLocale`, and every page prerenders. No JSON-dictionary fallback was needed.
+- The seed published 5 of 14 products. The other 9 still have `[placeholder]` text and are drafts.
+- A slug that isn't prerendered (a draft or unknown product) streams the not-found page with `noindex`, but with HTTP status 200, because the status is sent before `notFound()` runs. Revisit in Phase 5 if search engines need a real 404.
+
 ## Phase 2: Orders and enquiries
 - **`POST /api/orders`**, called from `checkout.tsx` in place of its current `onSubmit`:
   - Validate with the shared Zod schema and recalculate all prices on the server. Browser prices are never trusted.

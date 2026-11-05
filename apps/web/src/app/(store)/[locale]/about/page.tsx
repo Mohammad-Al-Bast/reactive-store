@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 import { Button } from "@/components/ui/button";
-import { categories } from "@/lib/products";
+import { pageLocale } from "@/i18n/locale";
+import { getCategories } from "@/lib/catalog";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -20,7 +21,8 @@ const values = [
 /** Add manufacturer names here to show the "Manufacturers we work with" strip. */
 const manufacturers: string[] = [];
 
-export default function AboutPage() {
+export default async function AboutPage({ params }: PageProps<"/[locale]/about">) {
+  const categories = await getCategories(await pageLocale(params));
   return (
     <>
       <section className="border-b border-border bg-card">

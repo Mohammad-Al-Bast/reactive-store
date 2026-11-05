@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
-import { categories } from "@/lib/products";
+import type { Category } from "@/lib/products";
 import { site, telHref } from "@/lib/site";
 
-export function SiteFooter() {
+export function SiteFooter({ categories }: { categories: Category[] }) {
   const year = 2026;
   return (
     <footer className="bg-ink text-sm text-ink-text">

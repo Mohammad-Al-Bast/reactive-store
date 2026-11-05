@@ -1,8 +1,6 @@
-import { Accessibility, FlaskRound, Hand, Syringe, Zap, type LucideProps } from "lucide-react";
+import { Accessibility, FlaskRound, Hand, Package, Syringe, Zap, type LucideProps } from "lucide-react";
 
-import type { CategorySlug } from "@/lib/products";
-
-const icons: Record<CategorySlug, React.ComponentType<LucideProps>> = {
+const icons: Record<string, React.ComponentType<LucideProps>> = {
   "physiotherapy-rehabilitation": Zap,
   "massage-recovery": Hand,
   "cupping-therapy": FlaskRound,
@@ -10,7 +8,8 @@ const icons: Record<CategorySlug, React.ComponentType<LucideProps>> = {
   "mobility-daily-living": Accessibility,
 };
 
-export function CategoryIcon({ slug, ...props }: { slug: CategorySlug } & LucideProps) {
-  const Icon = icons[slug];
+/** Icon for a category slug; categories added later in the admin get a generic icon. */
+export function CategoryIcon({ slug, ...props }: { slug: string } & LucideProps) {
+  const Icon = icons[slug] ?? Package;
   return <Icon aria-hidden="true" {...props} />;
 }

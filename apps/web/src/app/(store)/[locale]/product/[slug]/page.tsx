@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { notFound } from "next/navigation";
 import { AlertTriangle, CreditCard, Headphones, MessageCircle, ShieldCheck, Truck } from "lucide-react";
 
@@ -10,26 +10,38 @@ import { StockStatus } from "@/components/stock-status";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { audienceLabel, getCategory, getProduct, products } from "@/lib/products";
+import { pageLocale } from "@/i18n/locale";
+import { routing } from "@/i18n/routing";
+import { getCategory, getProduct, getProducts } from "@/lib/catalog";
+import { audienceLabel } from "@/lib/products";
 import { formatPrice, site, whatsappHref } from "@/lib/site";
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+export async function generateStaticParams() {
+  const products = await getProducts(routing.defaultLocale);
+  // With cacheComponents at least one param is required; unknown slugs still render on demand.
+  return products.length ? products.map((p) => ({ slug: p.slug })) : [{ slug: "coming-soon" }];
 }
 
-export async function generateMetadata({ params }: PageProps<"/product/[slug]">): Promise<Metadata> {
-  const product = getProduct((await params).slug);
+export async function generateMetadata({ params }: PageProps<"/[locale]/product/[slug]">): Promise<Metadata> {
+  const locale = await pageLocale(params);
+  const product = await getProduct((await params).slug, locale);
   return product ? { title: product.name, description: product.description ?? product.summary } : {};
 }
 
-export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
-  const product = getProduct((await params).slug);
+export default async function ProductPage({ params }: PageProps<"/[locale]/product/[slug]">) {
+  const locale = await pageLocale(params);
+  const product = await getProduct((await params).slug, locale);
   if (!product) notFound();
-  const category = getCategory(product.category)!;
-  const related = (product.related ?? [])
-    .map((s) => getProduct(s))
-    .filter((p): p is NonNullable<typeof p> => Boolean(p));
-  const fallbackRelated = products.filter((p) => p.category === product.category && p.slug !== product.slug).slice(0, 3);
+  const [category, inCategory] = await Promise.all([
+    getCategory(product.category, locale),
+    getProducts(locale, product.category),
+  ]);
+  if (!category) notFound();
+  const bySlug = new Map(inCategory.map((p) => [p.slug, p]));
+  const related = (
+    await Promise.all((product.related ?? []).map((s) => bySlug.get(s) ?? getProduct(s, locale)))
+  ).filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const fallbackRelated = inCategory.filter((p) => p.slug !== product.slug).slice(0, 3);
   const alsoBuy = related.length ? related : fallbackRelated;
 
   const reassurance = [

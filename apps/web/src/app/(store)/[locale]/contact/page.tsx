@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ExternalLink, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 import { EnquiryForm } from "@/components/enquiry-form";
+import { pageLocale } from "@/i18n/locale";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { site, telHref, whatsappHref } from "@/lib/site";
@@ -29,7 +30,8 @@ const faq = [
   { q: "Do you offer anything for students?", a: "Yes, we have offers for students and for group orders. Ask us for details." },
 ];
 
-export default function ContactPage() {
+export default async function ContactPage({ params }: PageProps<"/[locale]/contact">) {
+  await pageLocale(params);
   const cards = [
     { icon: MessageCircle, title: "WhatsApp", text: `${site.phoneDisplay} · fastest reply`, href: whatsappHref(), dark: true },
     { icon: Phone, title: "Call us", text: site.phoneDisplay, href: telHref },

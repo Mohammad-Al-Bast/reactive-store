@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import * as React from "react";
 import { Check, MessageCircle, Minus, Phone, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
@@ -112,7 +112,16 @@ export function Checkout() {
             <h2 id="h-items" className="mb-2 text-lg font-bold">
               1. Items
             </h2>
-            {!cart.ready ? <p className="py-6 text-muted-foreground">Loading your cart…</p> : null}
+            {cart.error ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 py-6">
+                <p className="text-destructive">We couldn&apos;t load your cart. Check your connection and try again.</p>
+                <Button type="button" variant="secondary" onClick={cart.retry}>
+                  Try again
+                </Button>
+              </div>
+            ) : !cart.ready ? (
+              <p className="py-6 text-muted-foreground">Loading your cart…</p>
+            ) : null}
             <ul>
               {cart.lines.map(({ product, qty }) => (
                 <li key={product.slug} className="flex flex-wrap items-center gap-4 border-b border-[#efebe2] py-4.5 last:border-0">

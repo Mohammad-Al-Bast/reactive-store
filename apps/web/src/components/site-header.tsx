@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import * as React from "react";
 import { Menu, Phone, Search, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
 
@@ -53,13 +52,13 @@ function SearchForm({ className, onDone }: { className?: string; onDone?: () => 
 }
 
 function CartLink() {
-  const { count, ready } = useCart();
+  const { count } = useCart();
   return (
     <Button asChild>
       <Link href="/cart" aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`}>
         <ShoppingCart />
         <span className="hidden sm:inline">Cart</span>
-        <span className="tabular-nums">{ready ? count : 0}</span>
+        <span className="tabular-nums">{count}</span>
       </Link>
     </Button>
   );

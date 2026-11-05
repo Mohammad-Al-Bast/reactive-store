@@ -40,4 +40,13 @@ jobs:
       - run: npm run db:deploy -w @reactive-store/api
       - run: npm run db:seed
       - run: npm run test:e2e -w @reactive-store/api
-      - run: npm run build
+      # The web build prerenders pages from the API, so build and start the API first.
+      - run: npm run build -w @reactive-store/shared -w @reactive-store/api
+      - name: Start API
+        run: |
+          node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001/api/health && exit 0; sleep 1; done
+          cat api.log; exit 1
+      - run: npm run build -w @reactive-store/web
+        env:
+          API_INTERNAL_URL: http://localhost:3001
