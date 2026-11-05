@@ -119,7 +119,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           </div>
 
           <div className="grid min-w-0 grid-cols-2 gap-4">
-            {tens ? (
+            {tens?.image ? (
               <Link
                 href={`/product/${tens.slug}`}
                 className="row-span-2 flex min-h-96 flex-col justify-between gap-4 rounded-2xl bg-muted p-6 hover:ring-2 hover:ring-[#cdbf9f]"
@@ -128,7 +128,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                   Electrotherapy
                 </span>
                 <div className="relative min-h-60 flex-1">
-                  <Image src={tens.image!} alt={tens.name} fill priority sizes="(max-width: 1024px) 50vw, 280px" className="object-contain mix-blend-multiply" />
+                  <Image src={tens.image} alt={tens.name} fill priority unoptimized={tens.image.startsWith("/uploads/")} sizes="(max-width: 1024px) 50vw, 280px" className="object-contain mix-blend-multiply" />
                 </div>
                 <span>
                   <span className="block font-semibold">4-in-1 TENS / EMS Unit</span>
@@ -136,13 +136,13 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                 </span>
               </Link>
             ) : null}
-            {table ? (
+            {table?.image ? (
               <Link
                 href={`/product/${table.slug}`}
                 className="flex flex-col justify-between gap-2.5 rounded-2xl bg-muted p-5 hover:ring-2 hover:ring-[#cdbf9f]"
               >
                 <div className="relative h-32">
-                  <Image src={table.image!} alt={table.name} fill sizes="(max-width: 1024px) 50vw, 240px" className="object-contain mix-blend-multiply" />
+                  <Image src={table.image} alt={table.name} fill unoptimized={table.image.startsWith("/uploads/")} sizes="(max-width: 1024px) 50vw, 240px" className="object-contain mix-blend-multiply" />
                 </div>
                 <span>
                   <span className="block text-[15px] font-semibold">{table.name}</span>

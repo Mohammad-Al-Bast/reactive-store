@@ -1,4 +1,4 @@
-import { hasPlaceholder } from './placeholder.js';
+import { hasPlaceholder } from '@reactive-store/shared';
 import { products } from './seed-data.js';
 
 describe('hasPlaceholder', () => {

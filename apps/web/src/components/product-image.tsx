@@ -25,6 +25,8 @@ export function ProductImage({
           fill
           sizes={sizes}
           priority={priority}
+          // Uploads are already resized WebP files from the API.
+          unoptimized={product.image.startsWith("/uploads/")}
           className="object-contain p-5 mix-blend-multiply"
         />
       ) : (

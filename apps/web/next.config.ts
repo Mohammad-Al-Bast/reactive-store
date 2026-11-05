@@ -19,7 +19,11 @@ const nextConfig: NextConfig = {
   // In production Caddy sends /api/* straight to the API, so this never runs there.
   // In development it lets the browser call the API on the same origin.
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${apiUrl}/api/:path*` },
+      // Uploaded product photos; Caddy serves these from disk in production.
+      { source: "/uploads/:path*", destination: `${apiUrl}/uploads/:path*` },
+    ];
   },
 };
 

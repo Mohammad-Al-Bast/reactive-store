@@ -10,7 +10,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, type Stock } from '../src/generated/prisma/client.js';
-import { hasPlaceholder } from './placeholder.js';
+import { hasPlaceholder } from '@reactive-store/shared';
 import { categories, products, type SeedProduct } from './seed-data.js';
 
 const stockToDb: Record<SeedProduct['stock'], Stock> = {
