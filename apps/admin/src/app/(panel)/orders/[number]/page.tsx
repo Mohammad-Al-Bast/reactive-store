@@ -5,9 +5,10 @@ import { Suspense } from "react";
 import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
 import { orderNumberPattern, type AdminOrderDetail } from "@reactive-store/shared";
 
+import { OrderSkeleton } from "@/components/admin/skeletons";
 import { OrderActions, ResendAlertButton } from "@/components/admin/order-actions";
 import { orderTotal } from "@/components/admin/order-table";
-import { LoadingBlock, PaymentBadge, StatusBadge } from "@/components/admin/ui";
+import { PaymentBadge, StatusBadge } from "@/components/admin/ui";
 import { formatPrice, formatWhenFull, orderStatusLabel, paymentMethodLabel, phoneDigits } from "@/lib/admin/format";
 import { adminGetOrNull } from "@/lib/admin/server";
 import { storeUrl } from "@/lib/store";
@@ -22,7 +23,7 @@ export default function OrderPage({ params }: PageProps<"/orders/[number]">) {
       <Link href="/orders" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft aria-hidden="true" className="size-4" /> All orders
       </Link>
-      <Suspense fallback={<LoadingBlock />}>
+      <Suspense fallback={<OrderSkeleton />}>
         <Order params={params} />
       </Suspense>
     </>

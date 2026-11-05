@@ -75,11 +75,3 @@ export function Pagination({
     </nav>
   );
 }
-
-export function LoadingBlock({ label = "Loading…" }: { label?: string }) {
-  return (
-    <div role="status" className="rounded-xl border border-border bg-card p-8 text-muted-foreground">
-      {label}
-    </div>
-  );
-}

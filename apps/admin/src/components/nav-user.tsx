@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { adminRequest } from "@/lib/admin/client";
 import { storeUrl } from "@/lib/store";
 
@@ -59,7 +60,15 @@ export function NavUser({ user }: { user: User | null }) {
   }
 
   if (!user) {
-    return <div className="h-12 animate-pulse rounded-lg bg-sidebar-accent" aria-hidden="true" />;
+    return (
+      <div className="flex items-center gap-2 p-2" aria-hidden="true">
+        <Skeleton className="size-8 shrink-0 rounded-lg bg-sidebar-border" />
+        <div className="flex flex-1 flex-col gap-1.5 group-data-[collapsible=icon]:hidden">
+          <Skeleton className="h-3 w-24 bg-sidebar-border" />
+          <Skeleton className="h-2.5 w-36 bg-sidebar-border" />
+        </div>
+      </div>
+    );
   }
 
   return (

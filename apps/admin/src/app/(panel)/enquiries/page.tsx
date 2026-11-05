@@ -3,8 +3,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { AdminEnquiry, Page } from "@reactive-store/shared";
 
+import { EnquiriesSkeleton } from "@/components/admin/skeletons";
 import { EnquiryCard } from "@/components/admin/enquiry-card";
-import { LoadingBlock, PageHeader, Pagination } from "@/components/admin/ui";
+import { PageHeader, Pagination } from "@/components/admin/ui";
 import { adminGet } from "@/lib/admin/server";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,7 @@ export default function EnquiriesPage({ searchParams }: PageProps<"/enquiries">)
   return (
     <>
       <PageHeader title="Enquiries" />
-      <Suspense fallback={<LoadingBlock />}>
+      <Suspense fallback={<EnquiriesSkeleton />}>
         <Enquiries searchParams={searchParams} />
       </Suspense>
     </>

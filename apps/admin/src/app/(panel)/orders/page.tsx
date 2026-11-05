@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { orderStatusSchema, type AdminOrderListItem, type Page } from "@reactive-store/shared";
 
+import { OrdersSkeleton } from "@/components/admin/skeletons";
 import { OrderTable } from "@/components/admin/order-table";
-import { LoadingBlock, PageHeader, Pagination } from "@/components/admin/ui";
+import { PageHeader, Pagination } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -16,7 +17,7 @@ export default function OrdersPage({ searchParams }: PageProps<"/orders">) {
   return (
     <>
       <PageHeader title="Orders" />
-      <Suspense fallback={<LoadingBlock />}>
+      <Suspense fallback={<OrdersSkeleton />}>
         <Orders searchParams={searchParams} />
       </Suspense>
     </>

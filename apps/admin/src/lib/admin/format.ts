@@ -9,6 +9,11 @@ import {
   type Stock,
 } from "@reactive-store/shared";
 
+/** Whether a department still needs its Arabic text (the store then shows English). */
+export function missingArabic(c: { translations: { ar?: { name?: string } } }) {
+  return !c.translations.ar?.name;
+}
+
 export function formatPrice(price: number | null | undefined) {
   return price == null ? "Price on request" : formatUsd(price);
 }

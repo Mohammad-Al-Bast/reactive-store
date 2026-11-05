@@ -13,7 +13,7 @@ export function SiteHeader() {
   const section = sectionFor(usePathname());
   return (
     <header className="sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur transition-[width,height] ease-linear">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+      <div className="flex w-full items-center gap-1 px-3 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1 size-8" />
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <span className="text-base font-semibold">{section?.title ?? "Admin"}</span>

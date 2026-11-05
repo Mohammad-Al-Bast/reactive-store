@@ -5,8 +5,9 @@ import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { AdminCategory, AdminProduct, AdminProductListItem } from "@reactive-store/shared";
 
+import { ProductEditorSkeleton } from "@/components/admin/skeletons";
 import { ProductEditor } from "@/components/admin/product-editor";
-import { LoadingBlock } from "@/components/admin/ui";
+
 import { adminGet, adminGetOrNull } from "@/lib/admin/server";
 
 export const metadata: Metadata = { title: "Edit product" };
@@ -18,7 +19,7 @@ export default function ProductPage({ params }: PageProps<"/products/[id]">) {
       <Link href="/products" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft aria-hidden="true" className="size-4" /> All products
       </Link>
-      <Suspense fallback={<LoadingBlock />}>
+      <Suspense fallback={<ProductEditorSkeleton />}>
         <Editor params={params} />
       </Suspense>
     </>

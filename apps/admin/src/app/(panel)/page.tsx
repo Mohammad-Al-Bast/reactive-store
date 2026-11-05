@@ -4,9 +4,10 @@ import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import type { AdminDashboard } from "@reactive-store/shared";
 
+import { DashboardSkeleton } from "@/components/admin/skeletons";
 import { EnquiryCard } from "@/components/admin/enquiry-card";
 import { OrderTable } from "@/components/admin/order-table";
-import { LoadingBlock, PageHeader } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { SectionCards } from "@/components/section-cards";
 import { adminGet } from "@/lib/admin/server";
@@ -17,7 +18,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard" />
-      <Suspense fallback={<LoadingBlock />}>
+      <Suspense fallback={<DashboardSkeleton />}>
         <Dashboard />
       </Suspense>
     </>

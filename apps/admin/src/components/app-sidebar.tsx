@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main";
+import { NavMain, type NavDepartment } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -23,8 +23,13 @@ import { storeUrl } from "@/lib/store";
 /** The panel's sidebar: brand, sections, a link to the store and the signed-in admin. */
 export function AppSidebar({
   user,
+  departments,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { user: { name: string; email: string } | null }) {
+}: React.ComponentProps<typeof Sidebar> & {
+  user: { name: string; email: string } | null;
+  /** null while loading. */
+  departments: NavDepartment[] | null;
+}) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -43,7 +48,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain />
+        <NavMain departments={departments} />
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
