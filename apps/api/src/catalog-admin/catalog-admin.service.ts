@@ -109,7 +109,7 @@ export class CatalogAdminService {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') throw new NotFoundException('Department not found');
       throw err;
     }
-    void this.web.catalogChanged();
+    void this.web.catalogChanged(['/', '/shop', `/shop/${input.slug}`]);
     return this.categories();
   }
 
@@ -212,6 +212,11 @@ export class CatalogAdminService {
     };
     const locales = Object.entries(input.translations).filter((e) => e[1]) as [Locale, ProductTranslation][];
 
+    const before = id
+      ? await this.prisma.product.findUnique({ where: { id }, select: { slug: true, category: { select: { slug: true } } } })
+      : null;
+    const category = await this.prisma.category.findUniqueOrThrow({ where: { id: input.categoryId }, select: { slug: true } });
+
     let productId: string;
     try {
       productId = await this.prisma.$transaction(async (tx) => {
@@ -268,7 +273,13 @@ export class CatalogAdminService {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') throw new NotFoundException('Product not found');
       throw err;
     }
-    void this.web.catalogChanged();
+    void this.web.catalogChanged([
+      '/',
+      '/shop',
+      `/shop/${category.slug}`,
+      `/product/${input.slug}`,
+      ...(before ? [`/shop/${before.category.slug}`, `/product/${before.slug}`] : []),
+    ]);
     return this.product(productId);
   }
 
@@ -296,16 +307,19 @@ export class CatalogAdminService {
         sortOrder: product._count.images,
       },
     });
-    void this.web.catalogChanged();
+    void this.web.catalogChanged(['/', '/shop', `/product/${product.slug}`]);
     return this.product(productId);
   }
 
   async removeImage(productId: string, imageId: string): Promise<AdminProduct> {
-    const image = await this.prisma.productImage.findFirst({ where: { id: imageId, productId } });
+    const image = await this.prisma.productImage.findFirst({
+      where: { id: imageId, productId },
+      include: { product: { select: { slug: true } } },
+    });
     if (!image) throw new NotFoundException('Image not found');
     await this.prisma.productImage.delete({ where: { id: imageId } });
     await this.images.remove(image.url);
-    void this.web.catalogChanged();
+    void this.web.catalogChanged(['/', '/shop', `/product/${image.product.slug}`]);
     return this.product(productId);
   }
 }

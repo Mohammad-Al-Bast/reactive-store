@@ -139,6 +139,14 @@ The store wanted a phone alert for each new order. We chose a **Telegram bot** f
 
 Store details in `src/lib/site.ts` stay in code for this version. They rarely change, and only the customer-facing wording moves to translation files.
 
+**Progress (2026-11-05):** done, in four commits (auth, admin API, admin UI for orders and enquiries, catalogue editing).
+- **Auth** is as planned, with one difference: a small guard built on `@nestjs/jwt` instead of `passport-jwt`. The guard also checks in the database that the session is still live, so signing out, "sign out everywhere", changing a password and disabling an admin all apply at once, not up to 15 minutes later. A rotated refresh token reused within 30 seconds is treated as two tabs refreshing at once and doesn't revoke sessions. `npm run admin` creates and manages admins.
+- **Order status** follows `orderStatusTransitions` in `packages/shared`: forward through the flow, cancel before delivery, and one step back to fix a mistake. Payment changes and internal notes are history entries naming the admin. If two admins change the same order at once, the second gets a 409.
+- **Catalogue editor:** English plus an optional Arabic translation per product and department. Publishing is refused while any `[...]` text remains. Photos are converted to WebP (max 1600px, metadata stripped) and stored under `UPLOAD_DIR`.
+- **Live updates:** after each save the API calls `/internal/revalidate`, which expires the `catalog` cache tag and immediately re-requests the affected pages. Next serves one stale render after expiry, so without this the admin's first "View in store" would show the old version. A price edit showed on the live page about 2 seconds after saving.
+- Each order page shows its staff-alert status, with a resend button.
+- Still open: Playwright browser tests (planned in Verification) and a review of the panel on a phone.
+
 ## Phase 4: English and Arabic
 - **Routes:** already under `[locale]` since Phase 1. Enable `ar` in the `next-intl` routing config.
 - **Strings:** move hard-coded text from all components and from `stockLabel`/`audienceLabel` into `messages/en.json` and `messages/ar.json`, including checkout errors. API validation errors return codes, and the web app translates them.

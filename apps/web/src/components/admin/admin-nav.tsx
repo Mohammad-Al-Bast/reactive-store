@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Inbox, LayoutDashboard, ShoppingBag } from "lucide-react";
+import { ExternalLink, FolderTree, Inbox, LayoutDashboard, Package, ShoppingBag } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ const items = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { href: "/admin/enquiries", label: "Enquiries", icon: Inbox },
+  { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/departments", label: "Departments", icon: FolderTree },
 ];
 
 /** Highlights the current section. Reads the URL, so render it inside <Suspense>. */

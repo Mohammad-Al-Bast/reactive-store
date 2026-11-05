@@ -23,7 +23,7 @@ function toLogin() {
 }
 
 /**
- * Calls the admin API from the browser. If the access cookie has expired, it
+ * Calls the admin API from the browser (JSON, or FormData for uploads). If the access cookie has expired, it
  * refreshes the session once and retries; if that fails, it goes to sign-in.
  */
 export async function adminRequest<T>(
@@ -31,11 +31,16 @@ export async function adminRequest<T>(
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
+  // FormData (file uploads) sets its own multipart content type.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const send = () =>
     fetch(`/api${path}`, {
       method,
-      headers: body === undefined ? { accept: "application/json" } : { "content-type": "application/json", accept: "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers:
+        body === undefined || isForm
+          ? { accept: "application/json" }
+          : { "content-type": "application/json", accept: "application/json" },
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
 
   try {

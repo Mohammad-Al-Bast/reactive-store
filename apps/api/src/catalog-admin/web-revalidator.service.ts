@@ -21,13 +21,17 @@ export class WebRevalidator {
     if (!this.secret) this.logger.warn('REVALIDATE_SECRET is not set: admin edits reach the store within the hour, not at once.');
   }
 
-  async catalogChanged(): Promise<boolean> {
+  /**
+   * @param paths Store pages to re-render straight away, without the locale prefix
+   *   (e.g. "/", "/shop", "/product/tens"). Everything is refreshed either way.
+   */
+  async catalogChanged(paths: string[] = ['/', '/shop']): Promise<boolean> {
     if (!this.secret) return false;
     try {
       const res = await fetch(this.url, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-revalidate-secret': this.secret },
-        body: JSON.stringify({ tags: ['catalog'] }),
+        body: JSON.stringify({ tags: ['catalog'], paths }),
         signal: AbortSignal.timeout(5_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

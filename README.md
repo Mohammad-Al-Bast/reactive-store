@@ -7,7 +7,7 @@ A monorepo with npm workspaces. The backend is being built in phases; see
 
 | Workspace | What |
 | --- | --- |
-| `apps/web` | Store and (soon) admin UI. Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · lucide icons |
+| `apps/web` | Store and admin panel. Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · lucide icons |
 | `apps/api` | REST API under `/api`. NestJS 12 · Prisma 7 · PostgreSQL 17 |
 | `packages/shared` | Zod schemas, enums and types used by both apps |
 
@@ -48,8 +48,8 @@ npm run build                              # needs the API on :3001
 | What | File |
 | --- | --- |
 | Phone, WhatsApp number, address, hours, delivery, warranty, payment methods | `apps/web/src/lib/site.ts` |
-| Products and departments (names, prices, specs, stock, photos) | The database. Edited in the admin panel from Phase 3; until then, in the database directly (`npx prisma studio` in `apps/api`). The starting catalogue is `apps/api/prisma/seed-data.ts`. |
-| Product photos | `apps/web/public/images/` (then add a `ProductImage` row with `url: "/images/your-file.jpg"`) |
+| Products, departments, prices, stock, photos | The admin panel at `/admin` (Products, Departments). Changes are live on the store within seconds. |
+| Product photos | Upload them on the product's page in the admin panel. They are converted to WebP and stored in `UPLOAD_DIR`. |
 | Logo / favicon | `apps/web/public/images/logo.png`, `apps/web/src/app/icon.png`, `apps/web/src/app/apple-icon.png` |
 | Brand colours and fonts | `apps/web/src/app/globals.css` |
 | Order and enquiry message format (WhatsApp and email alerts) | `packages/shared/src/messages.ts` |
@@ -64,7 +64,8 @@ address, delivery times). Replace it, or set it to `""` in `site.ts` to hide tha
 `price: null` shows "Price on request"; set a number (USD) to show a price and totals.
 
 Products with `[bracketed]` text were imported as **drafts** and are hidden from the store.
-Fill in the details and set `status` to `published` to show them.
+Fill in the details in the admin panel and set them to Published. The panel won't publish a
+product while it still has bracketed text.
 
 ## Pages
 
@@ -81,8 +82,15 @@ without one, such as `/shop`, redirect to `/en/shop`.
 | `/en/about` | About us |
 | `/en/contact` | Contact, opening hours and delivery / payment / warranty FAQ |
 
+The admin panel is at `/admin` (English only, never indexed): dashboard, orders, enquiries,
+products and departments. See "Admin accounts" below to create a login.
+
+For admin edits to show on the store at once, set the same random `REVALIDATE_SECRET` in
+`apps/api/.env` and `apps/web/.env.local`. Without it, the store picks up changes within an hour.
+
 API routes (all under `/api`): `GET /health`, `GET /categories`, `GET /products?category=&locale=`,
-`GET /products/:slug?locale=`, `POST /cart/resolve`, `POST /orders`, `POST /enquiries`.
+`GET /products/:slug?locale=`, `POST /cart/resolve`, `POST /orders`, `POST /enquiries`,
+`/auth/*` (sign-in), and `/admin/*` (signed-in admins only).
 The two form endpoints are rate limited per IP and refuse POSTs from other websites.
 
 ## Admin accounts
