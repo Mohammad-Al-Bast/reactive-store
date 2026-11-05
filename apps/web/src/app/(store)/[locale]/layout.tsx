@@ -29,29 +29,34 @@ const publicSans = localFont({
 });
 
 // Arabic: each Latin font falls back to these for Arabic letters (see globals.css).
-// The unicode-range means they are only downloaded when a page has Arabic text, so
-// English pages don't pay for them; `preload` is off for the same reason.
-// (Font loader options must be literals, so the range is repeated.)
-
-const notoNaskhArabic = localFont({
-  src: "../../fonts/noto-naskh-arabic-arabic-wght-normal.woff2",
-  variable: "--font-noto-naskh-arabic",
+// Markazi Text (headings) is a Naskh drawn to sit beside Latin serifs like Newsreader;
+// IBM Plex Sans Arabic (text) matches Public Sans. The unicode-range means they are
+// only downloaded when a page has Arabic text, so English pages don't pay for them;
+// `preload` is off for the same reason. (Font loader options must be literals.)
+const markaziText = localFont({
+  src: "../../fonts/markazi-text-arabic-wght-normal.woff2",
+  variable: "--font-markazi-text",
   weight: "400 700",
   display: "swap",
   preload: false,
   declarations: [{ prop: "unicode-range", value: "U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F" }],
 });
 
-const notoSansArabic = localFont({
-  src: "../../fonts/noto-sans-arabic-arabic-wght-normal.woff2",
-  variable: "--font-noto-sans-arabic",
-  weight: "100 900",
+// Plex Arabic isn't a variable font: one file per weight the store uses.
+const plexSansArabic = localFont({
+  src: [
+    { path: "../../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../../fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "../../fonts/ibm-plex-sans-arabic-arabic-700-normal.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-plex-sans-arabic",
   display: "swap",
   preload: false,
   declarations: [{ prop: "unicode-range", value: "U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F" }],
 });
 
-const fontVariables = [newsreader, publicSans, notoNaskhArabic, notoSansArabic].map((f) => f.variable).join(" ");
+const fontVariables = [newsreader, publicSans, markaziText, plexSansArabic].map((f) => f.variable).join(" ");
 
 export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
   const locale = await pageLocale(params);

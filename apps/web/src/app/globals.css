@@ -75,9 +75,9 @@
   --color-warning-soft: var(--warning-soft);
   --color-body: var(--text-body);
 
-  /* The Latin fonts have no Arabic letters, so Arabic text falls through to the Noto fonts. */
-  --font-sans: var(--font-public-sans), var(--font-noto-sans-arabic), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), var(--font-noto-naskh-arabic), Georgia, serif;
+  /* The Latin fonts have no Arabic letters, so Arabic text falls through to IBM Plex Sans Arabic (text) and Markazi Text (headings). */
+  --font-sans: var(--font-public-sans), var(--font-plex-sans-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), var(--font-markazi-text), Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
