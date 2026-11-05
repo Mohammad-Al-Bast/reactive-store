@@ -86,3 +86,22 @@ describe("buildOrderMessage", () => {
     expect(text).not.toContain("Notes:");
   });
 });
+
+describe("form error codes", () => {
+  it("reports translatable codes instead of English text", () => {
+    const result = createOrderSchema.safeParse({
+      items: [],
+      customer: { name: " ", phone: "nope", governorate: "Bekaa", city: "", address: "x".repeat(501) },
+      paymentMethod: "cod",
+    });
+    expect(result.success).toBe(false);
+    const byPath = Object.fromEntries(result.error!.issues.map((i) => [i.path.join("."), i.message]));
+    expect(byPath).toMatchObject({
+      items: "cart_empty",
+      "customer.name": "name_required",
+      "customer.phone": "phone_invalid",
+      "customer.city": "city_required",
+      "customer.address": "too_long",
+    });
+  });
+});

@@ -1,5 +1,6 @@
 import { Injectable, Logger, UnprocessableEntityException } from '@nestjs/common';
 import {
+  defaultLocale,
   HONEYPOT_FIELD,
   type CreateOrder,
   type OrderSummary,
@@ -36,7 +37,9 @@ export class OrdersService {
           id: r.id,
           slug: r.slug,
           price: r.price,
-          name: pickTranslation(r.translations, input.locale)?.name ?? r.slug,
+          // English names: the order is read by staff (admin, alerts, WhatsApp) in
+          // English, whatever language the customer shopped in (`order.locale`).
+          name: pickTranslation(r.translations, defaultLocale)?.name ?? r.slug,
         },
       ]),
     );
